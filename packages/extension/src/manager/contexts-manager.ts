@@ -32,7 +32,7 @@ export class ContextsManager implements ContextsApi {
     }, 10_000);
   }
 
-  async setCurrentContext(contextName: string): Promise<void> {
+  async setCurrentContext(_contextName: string): Promise<void> {
     throw new Error('setCurrentContext Method not implemented.');
   }
 
