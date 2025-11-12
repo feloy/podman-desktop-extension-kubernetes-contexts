@@ -19,26 +19,30 @@
 import { ContextsApi } from '@kubernetes-contexts/channels';
 import { injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
+import { KubeConfig } from '@kubernetes/client-node';
 
 @injectable()
 export class ContextsManager implements ContextsApi {
   #onContextsChange = new Emitter<void>();
   onContextsChange: Event<void> = this.#onContextsChange.event;
 
+  #currentKubeConfig: KubeConfig;
+
   constructor() {
-    // simulate contexts change at regular interval
-    setInterval(() => {
-      this.#onContextsChange.fire();
-    }, 10_000);
+    // start with an empty kubeconfig
+    this.#currentKubeConfig = new KubeConfig();
+  }
+
+  async update(kubeConfig: KubeConfig): Promise<void> {
+    this.#currentKubeConfig = kubeConfig;
+    this.#onContextsChange.fire();
+  }
+
+  getKubeConfig(): KubeConfig {
+    return this.#currentKubeConfig;
   }
 
   async setCurrentContext(_contextName: string): Promise<void> {
     throw new Error('setCurrentContext Method not implemented.');
-  }
-
-  i = 1;
-  getContexts(): string[] {
-    this.i = 1 - this.i;
-    return this.i === 1 ? ['context1'] : ['context1', 'context2'];
   }
 }

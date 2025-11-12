@@ -16,6 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
+import type { Cluster, Context, User } from '@kubernetes/client-node';
+
 export interface AvailableContextsInfo {
-  contextNames: string[];
+  clusters: Cluster[];
+  users: User[];
+  contexts: Context[];
+  currentContext: string;
 }
