@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { Cluster, User } from '@kubernetes/client-node';
 import ContextCardLine from '/@/component/ContextCardLine.svelte';
+import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
 
 interface Props {
   cluster: Cluster;
@@ -26,6 +27,9 @@ const { cluster, user, name, namespace, currentContext, icon }: Props = $props()
           <span class="font-semibold text-(--pd-content-card-header-text)" aria-label="Context Name">{name}</span>
         </div>
       </div>
+      {#if !currentContext}
+        <SetCurrentContextAction name={name} />
+      {/if}
     </div>
   </div>
   <div class="grow flex-column divide-gray-900 text-(--pd-content-card-text)">

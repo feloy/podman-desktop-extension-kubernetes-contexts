@@ -18,9 +18,16 @@
 
 import '@testing-library/jest-dom/vitest';
 
-import { expect, test } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import ContextCard from '/@/component/ContextCard.svelte';
+import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
+
+vi.mock(import('/@/component/actions/SetCurrentContextAction.svelte'));
+
+beforeEach(() => {
+  vi.resetAllMocks();
+});
 
 test('ContextCard should render with current context', () => {
   const { queryByText } = render(ContextCard, {
@@ -45,6 +52,7 @@ test('ContextCard should render with current context', () => {
   expect(queryByText('Test User')).toBeInTheDocument();
   expect(queryByText('Test Cluster')).toBeInTheDocument();
   expect(queryByText('https://test.cluster')).toBeInTheDocument();
+  expect(SetCurrentContextAction).not.toHaveBeenCalled();
 });
 
 test('ContextCard should render with no current context', () => {
@@ -70,4 +78,5 @@ test('ContextCard should render with no current context', () => {
   expect(queryByText('Test User')).toBeInTheDocument();
   expect(queryByText('Test Cluster')).toBeInTheDocument();
   expect(queryByText('https://test.cluster')).toBeInTheDocument();
+  expect(SetCurrentContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
 });

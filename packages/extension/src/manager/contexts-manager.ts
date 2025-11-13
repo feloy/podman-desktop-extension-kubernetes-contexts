@@ -20,6 +20,9 @@ import { ContextsApi } from '@kubernetes-contexts/channels';
 import { injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
 import { KubeConfig } from '@kubernetes/client-node';
+import { kubernetes, window } from '@podman-desktop/api';
+import { writeFile } from 'node:fs/promises';
+import * as jsYaml from 'js-yaml';
 
 @injectable()
 export class ContextsManager implements ContextsApi {
@@ -42,7 +45,21 @@ export class ContextsManager implements ContextsApi {
     return this.#currentKubeConfig;
   }
 
-  async setCurrentContext(_contextName: string): Promise<void> {
-    throw new Error('setCurrentContext Method not implemented.');
+  async setCurrentContext(contextName: string): Promise<void> {
+    try {
+      this.#currentKubeConfig.setCurrentContext(contextName);
+      const jsonString = this.#currentKubeConfig.exportConfig();
+      const yamlString = jsYaml.dump(JSON.parse(jsonString));
+      const kubeconfigUri = kubernetes.getKubeconfig();
+      await writeFile(kubeconfigUri.path, yamlString);
+      this.#onContextsChange.fire();
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error setting current context',
+        body: `Setting current context to "${contextName}" failed: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+    }
   }
 }
