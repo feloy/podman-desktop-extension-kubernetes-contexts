@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import type { WebviewPanel, ExtensionContext } from '@podman-desktop/api';
-import { env, Uri, window } from '@podman-desktop/api';
+import type { WebviewPanel, ExtensionContext, KubeconfigUpdateEvent } from '@podman-desktop/api';
+import { env, kubernetes, Uri, window } from '@podman-desktop/api';
 
 import { RpcExtension } from '@kubernetes-contexts/rpc';
 
@@ -28,6 +28,8 @@ import type { Container } from 'inversify';
 import { API_CONTEXTS, API_SUBSCRIBE, IDisposable } from '@kubernetes-contexts/channels';
 import { ChannelSubscriber } from '/@/manager/channel-subscriber';
 import { Dispatcher } from '/@/manager/dispatcher';
+import { existsSync } from 'node:fs';
+import { KubeConfig } from '@kubernetes/client-node';
 
 export class ContextsExtension {
   #container: Container | undefined;
@@ -78,6 +80,8 @@ export class ContextsExtension {
         }
       }
     });
+
+    await this.startMonitoring();
   }
 
   async deactivate(): Promise<void> {
@@ -126,5 +130,30 @@ export class ContextsExtension {
     panel.webview.html = indexHtml;
 
     return panel;
+  }
+
+  private async startMonitoring(): Promise<void> {
+    const kubeconfigWatcher = kubernetes.onDidUpdateKubeconfig(this.onKubeconfigUpdate.bind(this));
+    this.#extensionContext.subscriptions.push(kubeconfigWatcher);
+
+    // initial state is not sent by watcher, let's get it explicitely
+    const kubeconfig = kubernetes.getKubeconfig();
+    if (existsSync(kubeconfig.path)) {
+      await this.onKubeconfigUpdate({
+        location: kubeconfig,
+        type: 'CREATE',
+      });
+    }
+  }
+
+  private async onKubeconfigUpdate(event: KubeconfigUpdateEvent): Promise<void> {
+    if (event.type === 'DELETE') {
+      // update with an empty KubeConfig
+      await this.#contextsManager.update(new KubeConfig());
+      return;
+    }
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromFile(event.location.path);
+    await this.#contextsManager.update(kubeConfig);
   }
 }

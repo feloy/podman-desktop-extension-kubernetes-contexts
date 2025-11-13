@@ -16,11 +16,21 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import type { Cluster, Context, User } from '@kubernetes/client-node';
+import '@testing-library/jest-dom/vitest';
 
-export interface AvailableContextsInfo {
-  clusters: Cluster[];
-  users: User[];
-  contexts: Context[];
-  currentContext: string;
-}
+import { expect, test } from 'vitest';
+import { render } from '@testing-library/svelte';
+import ContextCardLine from '/@/component/ContextCardLine.svelte';
+
+test('ContextCardLine should render', () => {
+  const { queryByText, queryByLabelText } = render(ContextCardLine, {
+    props: {
+      title: 'Test Title',
+      value: 'Test Value',
+      label: 'Test Label',
+    },
+  });
+  expect(queryByText('Test Title')).toBeInTheDocument();
+  expect(queryByText('Test Value')).toBeInTheDocument();
+  expect(queryByLabelText('Test Label')).toBeInTheDocument();
+});

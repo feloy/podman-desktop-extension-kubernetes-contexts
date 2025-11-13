@@ -36,8 +36,12 @@ export class AvailableContextsDispatcher
   }
 
   getData(): AvailableContextsInfo {
+    const kubeConfig = this.manager.getKubeConfig();
     return {
-      contextNames: this.manager.getContexts(),
+      clusters: kubeConfig.getClusters(),
+      users: kubeConfig.getUsers(),
+      contexts: kubeConfig.getContexts(),
+      currentContext: kubeConfig.getCurrentContext(),
     };
   }
 }
