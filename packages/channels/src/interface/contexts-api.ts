@@ -20,4 +20,5 @@ export const ContextsApi = Symbol.for('ContextsApi');
 
 export interface ContextsApi {
   setCurrentContext(contextName: string): Promise<void>;
+  deleteContext(contextName: string): Promise<void>;
 }

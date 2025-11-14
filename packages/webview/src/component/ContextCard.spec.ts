@@ -22,8 +22,10 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import ContextCard from '/@/component/ContextCard.svelte';
 import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
+import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 
 vi.mock(import('/@/component/actions/SetCurrentContextAction.svelte'));
+vi.mock(import('/@/component/actions/DeleteContextAction.svelte'));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -53,6 +55,7 @@ test('ContextCard should render with current context', () => {
   expect(queryByText('Test Cluster')).toBeInTheDocument();
   expect(queryByText('https://test.cluster')).toBeInTheDocument();
   expect(SetCurrentContextAction).not.toHaveBeenCalled();
+  expect(DeleteContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
 });
 
 test('ContextCard should render with no current context', () => {
@@ -79,4 +82,5 @@ test('ContextCard should render with no current context', () => {
   expect(queryByText('Test Cluster')).toBeInTheDocument();
   expect(queryByText('https://test.cluster')).toBeInTheDocument();
   expect(SetCurrentContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
+  expect(DeleteContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
 });
