@@ -172,7 +172,6 @@ describe('removeContext', () => {
         - name: user2
     `);
     const newKubeConfig = contextsManager.removeContext(kubeConfig, 'context1');
-    console.log(newKubeConfig.getContexts());
     expect(newKubeConfig.getContexts()).toEqual([
       {
         name: 'context2',
@@ -218,7 +217,6 @@ describe('removeContext', () => {
         - name: user2
     `);
     const newKubeConfig = contextsManager.removeContext(kubeConfig, 'context1');
-    console.log(newKubeConfig.getContexts());
     expect(newKubeConfig.getContexts()).toEqual([
       {
         name: 'context2',
@@ -268,7 +266,6 @@ describe('removeContext', () => {
         - name: user3
     `);
     const newKubeConfig = contextsManager.removeContext(kubeConfig, 'context1');
-    console.log(newKubeConfig.getContexts());
     expect(newKubeConfig.getContexts()).toEqual([
       {
         name: 'context2',
@@ -311,7 +308,6 @@ describe('removeContext', () => {
         - name: user1
     `);
     const newKubeConfig = contextsManager.removeContext(kubeConfig, 'context2');
-    console.log(newKubeConfig.getContexts());
     expect(newKubeConfig.getContexts()).toEqual([
       {
         name: 'context1',
@@ -352,7 +348,7 @@ test('deleteContext should show error notification if it fails', async () => {
   });
 });
 
-test('deleteContext rewrites file with new current context', async () => {
+test('deleteContext rewrites file with new current context, no confirmation needed for non current context', async () => {
   const kubeConfigPath = '/path/to/kube/config';
   vol.fromJSON({
     [kubeConfigPath]: '{}',
@@ -370,10 +366,28 @@ test('deleteContext rewrites file with new current context', async () => {
             server: 'https://cluster1.example.com',
           },
         },
+        {
+          name: 'cluster2',
+          cluster: {
+            server: 'https://cluster2.example.com',
+          },
+        },
+        {
+          name: 'cluster3',
+          cluster: {
+            server: 'https://cluster3.example.com',
+          },
+        },
       ],
       users: [
         {
           name: 'user1',
+        },
+        {
+          name: 'user2',
+        },
+        {
+          name: 'user3',
         },
       ],
       contexts: [
@@ -382,6 +396,20 @@ test('deleteContext rewrites file with new current context', async () => {
           context: {
             cluster: 'cluster1',
             user: 'user1',
+          },
+        },
+        {
+          name: 'context2',
+          context: {
+            cluster: 'cluster2',
+            user: 'user2',
+          },
+        },
+        {
+          name: 'context3',
+          context: {
+            cluster: 'cluster3',
+            user: 'user3',
           },
         },
       ],
@@ -395,5 +423,171 @@ test('deleteContext rewrites file with new current context', async () => {
   const kubeconfigFile = fsScreenshot['/path/to/kube/config'];
   const kubeconfigFileNew = new KubeConfig();
   kubeconfigFileNew.loadFromString(kubeconfigFile ?? '');
-  expect(kubeconfigFileNew.getContexts()).toEqual([]);
+  expect(kubeconfigFileNew.getContexts()).toHaveLength(2);
+  expect(window.showInformationMessage).not.toHaveBeenCalled();
+});
+
+test('deleteContext the current context asks for confirmation', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+      {
+        name: 'cluster2',
+        cluster: {
+          server: 'https://cluster2.example.com',
+        },
+      },
+      {
+        name: 'cluster3',
+        cluster: {
+          server: 'https://cluster3.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+      {
+        name: 'user2',
+      },
+      {
+        name: 'user3',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+        },
+      },
+      {
+        name: 'context2',
+        context: {
+          cluster: 'cluster2',
+          user: 'user2',
+        },
+      },
+      {
+        name: 'context3',
+        context: {
+          cluster: 'cluster3',
+          user: 'user3',
+        },
+      },
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(3);
+
+  vi.mocked(window.showInformationMessage).mockResolvedValue('Yes');
+
+  await contextsManager.deleteContext('context1');
+
+  const fsScreenshot = vol.toJSON();
+  const kubeconfigFile = fsScreenshot['/path/to/kube/config'];
+  const kubeconfigFileNew = new KubeConfig();
+  kubeconfigFileNew.loadFromString(kubeconfigFile ?? '');
+  expect(kubeconfigFileNew.getContexts()).toHaveLength(2);
+  expect(window.showInformationMessage).toHaveBeenCalled();
+});
+
+test('deleteContext the current context asks for confirmation, and do nothing if refused', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+      {
+        name: 'cluster2',
+        cluster: {
+          server: 'https://cluster2.example.com',
+        },
+      },
+      {
+        name: 'cluster3',
+        cluster: {
+          server: 'https://cluster3.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+      {
+        name: 'user2',
+      },
+      {
+        name: 'user3',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+        },
+      },
+      {
+        name: 'context2',
+        context: {
+          cluster: 'cluster2',
+          user: 'user2',
+        },
+      },
+      {
+        name: 'context3',
+        context: {
+          cluster: 'cluster3',
+          user: 'user3',
+        },
+      },
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(3);
+
+  vi.mocked(window.showInformationMessage).mockResolvedValue('Cancel');
+
+  await contextsManager.deleteContext('context1');
+
+  const fsScreenshot = vol.toJSON();
+  const kubeconfigFile = fsScreenshot['/path/to/kube/config'];
+  expect(kubeconfigFile).toEqual('{}');
 });

@@ -61,6 +61,20 @@ export class ContextsManager implements ContextsApi {
   }
 
   async deleteContext(contextName: string): Promise<void> {
+    if (contextName === this.#currentKubeConfig.getCurrentContext()) {
+      const result = await window.showInformationMessage(
+        `You will delete the current context. If you delete it, you will need to switch to another context. Continue?`,
+        'Yes',
+        'Cancel',
+      );
+      if (result !== 'Yes') {
+        return;
+      }
+    }
+    await this.deleteContextInternal(contextName);
+  }
+
+  async deleteContextInternal(contextName: string): Promise<void> {
     try {
       this.#currentKubeConfig = this.removeContext(this.#currentKubeConfig, contextName);
       await this.saveKubeConfig();
