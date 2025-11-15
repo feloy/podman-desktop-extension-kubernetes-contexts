@@ -2,6 +2,7 @@
 import type { Cluster, User } from '@kubernetes/client-node';
 import ContextCardLine from '/@/component/ContextCardLine.svelte';
 import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
+import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 
 interface Props {
   cluster: Cluster;
@@ -30,6 +31,7 @@ const { cluster, user, name, namespace, currentContext, icon }: Props = $props()
       {#if !currentContext}
         <SetCurrentContextAction name={name} />
       {/if}
+      <DeleteContextAction name={name} />
     </div>
   </div>
   <div class="grow flex-column divide-gray-900 text-(--pd-content-card-text)">

@@ -48,10 +48,7 @@ export class ContextsManager implements ContextsApi {
   async setCurrentContext(contextName: string): Promise<void> {
     try {
       this.#currentKubeConfig.setCurrentContext(contextName);
-      const jsonString = this.#currentKubeConfig.exportConfig();
-      const yamlString = jsYaml.dump(JSON.parse(jsonString));
-      const kubeconfigUri = kubernetes.getKubeconfig();
-      await writeFile(kubeconfigUri.path, yamlString);
+      await this.saveKubeConfig();
       this.#onContextsChange.fire();
     } catch (error: unknown) {
       window.showNotification({
@@ -61,5 +58,72 @@ export class ContextsManager implements ContextsApi {
         highlight: true,
       });
     }
+  }
+
+  async deleteContext(contextName: string): Promise<void> {
+    if (contextName === this.#currentKubeConfig.getCurrentContext()) {
+      const result = await window.showInformationMessage(
+        `You will delete the current context. If you delete it, you will need to switch to another context. Continue?`,
+        'Yes',
+        'Cancel',
+      );
+      if (result !== 'Yes') {
+        return;
+      }
+    }
+    await this.deleteContextInternal(contextName);
+  }
+
+  async deleteContextInternal(contextName: string): Promise<void> {
+    try {
+      this.#currentKubeConfig = this.removeContext(this.#currentKubeConfig, contextName);
+      await this.saveKubeConfig();
+      this.#onContextsChange.fire();
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error deleting context',
+        body: `Deleting context "${contextName}" failed: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+    }
+  }
+
+  async saveKubeConfig(): Promise<void> {
+    const jsonString = this.#currentKubeConfig.exportConfig();
+    const yamlString = jsYaml.dump(JSON.parse(jsonString));
+    const kubeconfigUri = kubernetes.getKubeconfig();
+    await writeFile(kubeconfigUri.path, yamlString);
+  }
+
+  removeContext(kubeconfig: KubeConfig, contextName: string): KubeConfig {
+    const previousContexts = kubeconfig.contexts;
+    const previousCurrentContextName = kubeconfig.getCurrentContext();
+    const newContexts = previousContexts.filter(ctx => ctx.name !== contextName);
+    if (newContexts.length === previousContexts.length) {
+      return kubeconfig;
+    }
+    let newCurrentContextName: string | undefined = previousCurrentContextName;
+    if (previousCurrentContextName === contextName) {
+      newCurrentContextName = undefined;
+    }
+
+    const newConfig = new KubeConfig();
+    newConfig.loadFromOptions({
+      contexts: newContexts,
+      clusters: kubeconfig.clusters.filter(cluster => {
+        // remove clusters not referenced anymore, except if there were already not referenced before
+        return (
+          newContexts.some(ctx => ctx.cluster === cluster.name) ||
+          !previousContexts.some(ctx => ctx.cluster === cluster.name)
+        );
+      }),
+      users: kubeconfig.users.filter(user => {
+        // remove users not referenced anymore, except if there were already not referenced before
+        return newContexts.some(ctx => ctx.user === user.name) || !previousContexts.some(ctx => ctx.user === user.name);
+      }),
+      currentContext: newCurrentContextName ?? '',
+    });
+    return newConfig;
   }
 }
