@@ -13,12 +13,9 @@ const { name }: Props = $props();
 const remote = getContext<Remote>(Remote);
 const contextsApi = remote.getProxy(API_CONTEXTS);
 
-async function setCurrentContext(name: string): Promise<void> {
+async function setCurrentContext(): Promise<void> {
   await contextsApi.setCurrentContext(name);
 }
 </script>
 
-<IconButton
-  title="Set as Current Context"
-  icon={faRightToBracket}
-  onClick={(): Promise<void> => setCurrentContext(name)} />
+<IconButton title="Set as Current Context" icon={faRightToBracket} onClick={setCurrentContext} />
