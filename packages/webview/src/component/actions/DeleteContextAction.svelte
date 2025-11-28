@@ -13,9 +13,9 @@ const { name }: Props = $props();
 const remote = getContext<Remote>(Remote);
 const contextsApi = remote.getProxy(API_CONTEXTS);
 
-async function deleteContext(name: string): Promise<void> {
+async function deleteContext(): Promise<void> {
   await contextsApi.deleteContext(name);
 }
 </script>
 
-<IconButton title="Delete Context" icon={faTrash} onClick={(): Promise<void> => deleteContext(name)} />
+<IconButton title="Delete Context" icon={faTrash} onClick={deleteContext} />
