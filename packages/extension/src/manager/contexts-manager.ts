@@ -74,6 +74,50 @@ export class ContextsManager implements ContextsApi {
     await this.deleteContextInternal(contextName);
   }
 
+  findNewContextName(kubeConfig: KubeConfig, contextName: string): string {
+    let counter = 1;
+    let newName = `${contextName}-${counter}`;
+    // Keep creating new name by adding 1 to name until not existing name is found
+    while (kubeConfig.contexts.find(context => context.name === newName)) {
+      counter += 1;
+      newName = `${contextName}-${counter}`;
+    }
+    return newName;
+  }
+
+  async duplicateContext(contextName: string): Promise<void> {
+    try {
+      const newConfig = new KubeConfig();
+      const kubeConfig = this.getKubeConfig();
+      const newName = this.findNewContextName(kubeConfig, contextName);
+      const originalContext = kubeConfig.contexts.find(context => context.name === contextName);
+      if (!originalContext) return;
+
+      newConfig.loadFromOptions({
+        clusters: kubeConfig.clusters,
+        users: kubeConfig.users,
+        currentContext: kubeConfig.currentContext,
+        contexts: [
+          ...kubeConfig.contexts,
+          {
+            ...originalContext,
+            name: newName,
+          },
+        ],
+      });
+
+      await this.update(newConfig);
+      await this.saveKubeConfig();
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error duplicating context',
+        body: `Duplicating context "${contextName}" failed: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+    }
+  }
+
   async deleteContextInternal(contextName: string): Promise<void> {
     try {
       this.#currentKubeConfig = this.removeContext(this.#currentKubeConfig, contextName);

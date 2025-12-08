@@ -3,6 +3,7 @@ import type { Cluster, User } from '@kubernetes/client-node';
 import ContextCardLine from '/@/component/ContextCardLine.svelte';
 import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
 import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
+import DuplicateContextAction from '/@/component/actions/DuplicateContextAction.svelte';
 
 interface Props {
   cluster: Cluster;
@@ -31,6 +32,7 @@ const { cluster, user, name, namespace, currentContext, icon }: Props = $props()
       {#if !currentContext}
         <SetCurrentContextAction name={name} />
       {/if}
+      <DuplicateContextAction name={name} />
       <DeleteContextAction name={name} />
     </div>
   </div>

@@ -591,3 +591,55 @@ test('deleteContext the current context asks for confirmation, and do nothing if
   const kubeconfigFile = fsScreenshot['/path/to/kube/config'];
   expect(kubeconfigFile).toEqual('{}');
 });
+
+test('should duplicate context from config', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+        },
+      },
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(1);
+
+  await contextsManager.duplicateContext(kubeConfig.contexts[0].name);
+  let contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts.length).toBe(2);
+
+  expect(contexts[1].name).toBe('context1-1');
+
+  await contextsManager.duplicateContext(kubeConfig.contexts[0].name);
+  contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts.length).toBe(3);
+  expect(contexts[2].name).toBe('context1-2');
+});
