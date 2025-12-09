@@ -4,13 +4,25 @@ import { States } from '/@/state/states';
 import { NavPage } from '@podman-desktop/ui-svelte';
 import ContextCard from '/@/component/ContextCard.svelte';
 import { kubernetesIconBase64 } from './KubeIcon';
+import type { Context } from '@kubernetes/client-node';
+import EditModal from '/@/component/EditModal.svelte';
 
 const states = getContext<States>(States);
 const availableContexts = states.stateAvailableContextsInfoUI;
 
+let contextToEdit = $state<Context>();
+
 onMount(() => {
   return availableContexts.subscribe();
 });
+
+function onEdit(context: Context): void {
+  contextToEdit = context;
+}
+
+function closeEditModal(): void {
+  contextToEdit = undefined;
+}
 </script>
 
 <main class="overflow-hidden bg-(--pd-content-bg) text-base">
@@ -29,10 +41,19 @@ onMount(() => {
                   name={context.name}
                   namespace={context.namespace}
                   currentContext={context.name === availableContexts.data.currentContext}
-                  icon={kubernetesIconBase64} />
+                  icon={kubernetesIconBase64}
+                  onEdit={onEdit.bind(undefined, context)} />
               {/if}
             {/each}
           </div>
+          {#if contextToEdit}
+            <EditModal
+              contexts={availableContexts.data.contexts}
+              users={availableContexts.data.users}
+              clusters={availableContexts.data.clusters}
+              contextToEdit={contextToEdit}
+              closeCallback={closeEditModal} />
+          {/if}
         {/if}
       </div>
     {/snippet}

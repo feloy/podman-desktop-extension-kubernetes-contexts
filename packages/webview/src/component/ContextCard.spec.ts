@@ -48,6 +48,7 @@ test('ContextCard should render with current context', () => {
       namespace: 'Test Namespace',
       currentContext: true,
       icon: '/my/icon',
+      onEdit: () => {},
     },
   });
   expect(queryByText('Current Context')).toBeInTheDocument();
@@ -76,6 +77,7 @@ test('ContextCard should render with no current context', () => {
       namespace: 'Test Namespace',
       currentContext: false,
       icon: '/my/icon',
+      onEdit: () => {},
     },
   });
   expect(queryByText('Current Context')).not.toBeInTheDocument();
