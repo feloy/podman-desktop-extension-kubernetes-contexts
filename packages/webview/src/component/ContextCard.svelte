@@ -4,6 +4,7 @@ import ContextCardLine from '/@/component/ContextCardLine.svelte';
 import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
 import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 import DuplicateContextAction from '/@/component/actions/DuplicateContextAction.svelte';
+import EditContextAction from '/@/component/actions/EditContextAction.svelte';
 
 interface Props {
   cluster: Cluster;
@@ -12,9 +13,10 @@ interface Props {
   namespace?: string;
   currentContext: boolean;
   icon: string;
+  onEdit: () => void;
 }
 
-const { cluster, user, name, namespace, currentContext, icon }: Props = $props();
+const { cluster, user, name, namespace, currentContext, icon, onEdit }: Props = $props();
 </script>
 
 <div role="row" aria-label={name} class="bg-(--pd-content-card-bg) mb-5 rounded-md p-3 flex-nowrap">
@@ -33,6 +35,7 @@ const { cluster, user, name, namespace, currentContext, icon }: Props = $props()
         <SetCurrentContextAction name={name} />
       {/if}
       <DuplicateContextAction name={name} />
+      <EditContextAction onEdit={onEdit} />
       <DeleteContextAction name={name} />
     </div>
   </div>

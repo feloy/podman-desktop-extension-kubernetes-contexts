@@ -98,6 +98,7 @@ test('ContextCardLine should render cards when available contexts', () => {
     namespace: 'test-namespace-1',
     currentContext: true,
     icon: kubernetesIconBase64,
+    onEdit: expect.any(Function),
   });
   expect(ContextCard).toHaveBeenCalledWith(expect.anything(), {
     cluster: {
@@ -112,5 +113,6 @@ test('ContextCardLine should render cards when available contexts', () => {
     namespace: undefined,
     currentContext: false,
     icon: kubernetesIconBase64,
+    onEdit: expect.any(Function),
   });
 });

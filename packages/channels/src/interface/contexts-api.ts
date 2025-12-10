@@ -16,10 +16,13 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
+import type { Context } from '@kubernetes/client-node';
+
 export const ContextsApi = Symbol.for('ContextsApi');
 
 export interface ContextsApi {
   setCurrentContext(contextName: string): Promise<void>;
   deleteContext(contextName: string): Promise<void>;
   duplicateContext(contextName: string): Promise<void>;
+  editContext(contextName: string, newContext: Context): Promise<void>;
 }

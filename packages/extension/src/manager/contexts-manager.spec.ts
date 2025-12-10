@@ -643,3 +643,224 @@ test('should duplicate context from config', async () => {
   expect(contexts.length).toBe(3);
   expect(contexts[2].name).toBe('context1-2');
 });
+
+test('should update context from config', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+        },
+      },
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(1);
+
+  await contextsManager.editContext(kubeConfig.contexts[0].name, {
+    name: 'context1-edited',
+    namespace: 'namespace-edited',
+    cluster: 'cluster1',
+    user: 'user1',
+  });
+  const contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts.length).toBe(1);
+
+  expect(contexts[0].name).toBe('context1-edited');
+  expect(contexts[0].namespace).toBe('namespace-edited');
+});
+
+test('should remove the namespace when updating context from config', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+          namespace: 'namespace1'
+        }
+      }
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(1);
+  const contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts[0].namespace).toBe('namespace1');
+
+  await contextsManager.editContext(kubeConfig.contexts[0].name, {
+    name: kubeConfig.contexts[0].name,
+    namespace: '',
+    cluster: 'cluster1',
+    user: 'user1',
+  });
+  const contexts2 = contextsManager.getKubeConfig().getContexts();
+  expect(contexts2[0].namespace).toBeUndefined();
+});
+
+test('should update the cluster updating context from config', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+      {
+        name: 'cluster2',
+        cluster: {
+          server: 'https://cluster2.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+          namespace: 'namespace1'
+        }
+      }
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(1);
+  const contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts[0].cluster).toBe('cluster1');
+
+  await contextsManager.editContext(kubeConfig.contexts[0].name, {
+    name: kubeConfig.contexts[0].name,
+    namespace: 'namespace1',
+    cluster: 'cluster2',
+    user: 'user1',
+  });
+  const contexts2 = contextsManager.getKubeConfig().getContexts();
+  expect(contexts2[0].cluster).toBe('cluster2');
+});
+
+test('should update the user updating context from config', async () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  vol.fromJSON({
+    [kubeConfigPath]: '{}',
+  });
+  vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+    path: kubeConfigPath,
+  } as Uri);
+  const contextsManager = new ContextsManager();
+  const kubeConfig = new KubeConfig();
+  const kubeconfigFileContent = `{
+    clusters: [
+      {
+        name: 'cluster1',
+        cluster: {
+          server: 'https://cluster1.example.com',
+        },
+      },
+    ],
+    users: [
+      {
+        name: 'user1',
+      },
+      {
+        name: 'user2',
+      },
+    ],
+    contexts: [
+      {
+        name: 'context1',
+        context: {
+          cluster: 'cluster1',
+          user: 'user1',
+          namespace: 'namespace1'
+        }
+      }
+    ],
+    "current-context": "context1"
+  }`;
+  kubeConfig.loadFromString(kubeconfigFileContent);
+  await contextsManager.update(kubeConfig);
+
+  expect(contextsManager.getKubeConfig().getContexts()).toHaveLength(1);
+  const contexts = contextsManager.getKubeConfig().getContexts();
+  expect(contexts[0].user).toBe('user1');
+
+  await contextsManager.editContext(kubeConfig.contexts[0].name, {
+    name: kubeConfig.contexts[0].name,
+    namespace: 'namespace1',
+    cluster: 'cluster1',
+    user: 'user2',
+  });
+  const contexts2 = contextsManager.getKubeConfig().getContexts();
+  expect(contexts2[0].user).toBe('user2');
+});

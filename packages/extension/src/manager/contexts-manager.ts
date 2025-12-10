@@ -19,7 +19,7 @@
 import { ContextsApi } from '@kubernetes-contexts/channels';
 import { injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
-import { KubeConfig } from '@kubernetes/client-node';
+import { Context, KubeConfig } from '@kubernetes/client-node';
 import { kubernetes, window } from '@podman-desktop/api';
 import { writeFile } from 'node:fs/promises';
 import * as jsYaml from 'js-yaml';
@@ -169,5 +169,47 @@ export class ContextsManager implements ContextsApi {
       currentContext: newCurrentContextName ?? '',
     });
     return newConfig;
+  }
+
+  async editContext(contextName: string, newContext: Context): Promise<void> {
+    try {
+      const newConfig = new KubeConfig();
+      const kubeConfig = this.getKubeConfig();
+
+      const originalContext = kubeConfig.contexts.find(context => context.name === contextName);
+      const newContexts = kubeConfig.contexts.filter(ctx => ctx.name !== contextName);
+      if (!originalContext) throw new Error('Context name was not found in kube config');
+
+      const namespaceField = newContext.namespace !== '' ? { namespace: newContext.namespace } : {};
+
+      const editedContext = {
+        ...originalContext,
+        name: newContext.name,
+        cluster: newContext.cluster,
+        user: newContext.user,
+        ...namespaceField,
+      };
+
+      if (newContext.namespace === '') {
+        delete editedContext.namespace;
+      }
+
+      newConfig.loadFromOptions({
+        clusters: kubeConfig.clusters,
+        users: kubeConfig.users,
+        currentContext: kubeConfig.getCurrentContext() === contextName ? newContext.name : kubeConfig.currentContext,
+        contexts: [editedContext, ...newContexts],
+      });
+
+      await this.update(newConfig);
+      await this.saveKubeConfig();
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error editing context',
+        body: `Editing context "${contextName}" failed: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+    }
   }
 }
