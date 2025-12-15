@@ -21,11 +21,13 @@ import { ContainerModule } from 'inversify';
 import { ContextsManager } from './contexts-manager';
 import { ChannelSubscriber } from '/@/manager/channel-subscriber';
 import { Dispatcher } from '/@/manager/dispatcher';
+import { DashboardStatesManager } from './dashboard-states-manager';
 
 const managersModule = new ContainerModule(options => {
   options.bind<ContextsManager>(ContextsManager).toSelf().inSingletonScope();
   options.bind<ContextsManager>(ChannelSubscriber).toSelf().inSingletonScope();
   options.bind<Dispatcher>(Dispatcher).toSelf().inSingletonScope();
+  options.bind<DashboardStatesManager>(DashboardStatesManager).toSelf().inSingletonScope();
 
   // Bind IDisposable to services which need to clear data/stop connection/etc when the panel is left
   // (the onDestroy are not called from components when the panel is left, which may introduce memory leaks if not disposed here)

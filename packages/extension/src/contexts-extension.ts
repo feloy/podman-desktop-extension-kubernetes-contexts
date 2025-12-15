@@ -30,6 +30,7 @@ import { ChannelSubscriber } from '/@/manager/channel-subscriber';
 import { Dispatcher } from '/@/manager/dispatcher';
 import { existsSync } from 'node:fs';
 import { KubeConfig } from '@kubernetes/client-node';
+import { DashboardStatesManager } from './manager/dashboard-states-manager';
 
 export class ContextsExtension {
   #container: Container | undefined;
@@ -40,6 +41,7 @@ export class ContextsExtension {
   #contextsManager: ContextsManager;
   #channelSubscriber: ChannelSubscriber;
   #dispatcher: Dispatcher;
+  #dashboardStatesManager: DashboardStatesManager;
 
   constructor(readonly extensionContext: ExtensionContext) {
     this.#extensionContext = extensionContext;
@@ -62,6 +64,10 @@ export class ContextsExtension {
     this.#contextsManager = await this.#container.getAsync(ContextsManager);
     this.#channelSubscriber = await this.#container.getAsync(ChannelSubscriber);
     this.#dispatcher = await this.#container.getAsync(Dispatcher);
+    this.#dashboardStatesManager = await this.#container.getAsync(DashboardStatesManager);
+    this.#dashboardStatesManager.init();
+    this.#extensionContext.subscriptions.push(this.#dashboardStatesManager);
+
     this.#dispatcher.init();
 
     const afterFirst = performance.now();
