@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, test, vi } from 'vitest';
 import { DashboardStatesManager } from './dashboard-states-manager';
 import { type Disposable, type Extension, extensions } from '@podman-desktop/api';
 import {
+  type ContextsHealthsInfo,
   type KubernetesDashboardExtensionApi,
   type KubernetesDashboardSubscriber,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
@@ -61,6 +62,7 @@ describe('dashboard extension is installed', () => {
   const onDidChangeDisposable: () => void = vi.fn();
   const subscriber: () => KubernetesDashboardSubscriber = vi.fn();
   const disposeSubscriber: () => void = vi.fn();
+  const onContextsHealth: (callback: (healthInfo: ContextsHealthsInfo) => void) => void = vi.fn();
 
   beforeEach(() => {
     vi.mocked(extensions.onDidChange).mockImplementation(f => {
@@ -73,7 +75,7 @@ describe('dashboard extension is installed', () => {
     });
     vi.mocked(extensions.getExtension).mockImplementation(id => {
       vi.mocked(subscriber).mockReturnValue({
-        onContextsHealth: vi.fn(),
+        onContextsHealth: onContextsHealth,
         onContextsPermissions: vi.fn(),
         onResourcesCount: vi.fn(),
         dispose: disposeSubscriber,
@@ -99,6 +101,67 @@ describe('dashboard extension is installed', () => {
     await vi.waitFor(() => {
       expect(manager.getSubscriber()).toBeDefined();
     });
+  });
+
+  test('onContextsHealth is eventually called on subscriber', async () => {
+    manager = new DashboardStatesManager();
+    manager.init();
+    await vi.waitFor(() => {
+      expect(onContextsHealth).toHaveBeenCalled();
+    });
+  });
+
+  test('when contextsHealth callback is called, onContextsHealthChange is fired', async () => {
+    manager = new DashboardStatesManager();
+    const onContextsHealthChangeCallback: () => void = vi.fn();
+    manager.onContextsHealthChange(onContextsHealthChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onContextsHealth).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onContextsHealth).mock.calls[0][0];
+    assert(cb);
+    expect(onContextsHealthChangeCallback).not.toHaveBeenCalled();
+    cb!({
+      healths: [
+        {
+          contextName: 'context1',
+          checking: false,
+          reachable: true,
+          offline: false,
+        },
+      ],
+    });
+    expect(onContextsHealthChangeCallback).toHaveBeenCalled();
+  });
+
+  test('when contextsHealth callback is called, getContextsHealths returns the correct value', async () => {
+    manager = new DashboardStatesManager();
+    const onContextsHealthChangeCallback: () => void = vi.fn();
+    manager.onContextsHealthChange(onContextsHealthChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onContextsHealth).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onContextsHealth).mock.calls[0][0];
+    assert(cb);
+    expect(onContextsHealthChangeCallback).not.toHaveBeenCalled();
+    const newContextsHealths: ContextsHealthsInfo = {
+      healths: [
+        {
+          contextName: 'context1',
+          checking: false,
+          reachable: true,
+          offline: false,
+        },
+      ],
+    };
+    cb!(newContextsHealths);
+    expect(manager.getContextsHealths()).toEqual(newContextsHealths);
   });
 
   test('onDidChangeDisposable is called', () => {

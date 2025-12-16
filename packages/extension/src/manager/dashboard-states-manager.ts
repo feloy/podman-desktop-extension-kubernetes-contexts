@@ -18,15 +18,21 @@
 
 import { Disposable, extensions } from '@podman-desktop/api';
 import {
+  ContextsHealthsInfo,
   KubernetesDashboardExtensionApi,
   KubernetesDashboardSubscriber,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
 import { injectable } from 'inversify';
+import { Emitter, Event } from '/@/types/emitter';
 
 @injectable()
 export class DashboardStatesManager implements Disposable {
+  #onContextsHealthChange = new Emitter<void>();
+  onContextsHealthChange: Event<void> = this.#onContextsHealthChange.event;
+
   #subscriptions: Disposable[] = [];
   #subscriber: KubernetesDashboardSubscriber | undefined;
+  #contextsHealths: ContextsHealthsInfo = { healths: [] };
 
   init(): void {
     const didChangeSubscription = extensions.onDidChange(() => {
@@ -37,6 +43,13 @@ export class DashboardStatesManager implements Disposable {
         this.#subscriptions.push(this.#subscriber);
         // stop being notified when the extension is changed
         didChangeSubscription.dispose();
+
+        this.#subscriber.onContextsHealth(event => {
+          // We always store the contexts healths locally as the information is very small
+          // and we don't want to store it only when there are some subscribers
+          this.#contextsHealths = event;
+          this.#onContextsHealthChange.fire();
+        });
       }
     });
     // stop being notified when the extension is deactivated
@@ -52,5 +65,9 @@ export class DashboardStatesManager implements Disposable {
 
   getSubscriber(): KubernetesDashboardSubscriber | undefined {
     return this.#subscriber;
+  }
+
+  getContextsHealths(): ContextsHealthsInfo {
+    return this.#contextsHealths;
   }
 }

@@ -21,12 +21,16 @@ import { RpcChannel } from '@kubernetes-contexts/rpc';
 import { inject, injectable, multiInject } from 'inversify';
 import { DispatcherObject } from '/@/dispatcher/util/dispatcher-object.js';
 import { ChannelSubscriber } from '/@/manager/channel-subscriber.js';
-import { AVAILABLE_CONTEXTS } from '@kubernetes-contexts/channels';
+import { AVAILABLE_CONTEXTS, CONTEXT_HEALTHS } from '@kubernetes-contexts/channels';
+import { DashboardStatesManager } from '/@/manager/dashboard-states-manager.js';
 
 @injectable()
 export class Dispatcher {
   @inject(ContextsManager)
   private manager: ContextsManager;
+
+  @inject(DashboardStatesManager)
+  private dashboardStatesManager: DashboardStatesManager;
 
   #dispatchers: Map<string, DispatcherObject<unknown>> = new Map();
   #channelSubscriber: ChannelSubscriber;
@@ -44,6 +48,9 @@ export class Dispatcher {
   init(): void {
     this.manager.onContextsChange(async () => {
       await this.dispatch(AVAILABLE_CONTEXTS);
+    });
+    this.dashboardStatesManager.onContextsHealthChange(async () => {
+      await this.dispatch(CONTEXT_HEALTHS);
     });
 
     this.#channelSubscriber.onSubscribe(async channelName => await this.dispatchByChannelName(channelName));
