@@ -24,6 +24,10 @@ import {
   type KubernetesDashboardSubscriber,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
 
+beforeEach(() => {
+  vi.resetAllMocks();
+});
+
 describe('dashboard extension is not installed', () => {
   let manager: DashboardStatesManager;
   const onDidChangeDisposable: () => void = vi.fn();
@@ -104,9 +108,12 @@ describe('dashboard extension is installed', () => {
     expect(onDidChangeDisposable).toHaveBeenCalled();
   });
 
-  test('subscriber is disposed on dispose', () => {
+  test('subscriber is disposed on dispose', async () => {
     manager = new DashboardStatesManager();
     manager.init();
+    await vi.waitFor(() => {
+      expect(manager.getSubscriber()).toBeDefined();
+    });
     manager.dispose();
     expect(disposeSubscriber).toHaveBeenCalled();
   });
