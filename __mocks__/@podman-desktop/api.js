@@ -84,6 +84,10 @@ const plugin = {
   Disposable: {
     create: (func) => ({ dispose: func }),
   },
+  extensions: {
+    onDidChange: vi.fn(),
+    getExtension: vi.fn(),
+  },
 };
 
 module.exports = plugin;
