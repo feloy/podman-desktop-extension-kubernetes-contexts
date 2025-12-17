@@ -18,7 +18,7 @@
 
 import '@testing-library/jest-dom/vitest';
 
-import { beforeEach, expect, test, vi } from 'vitest';
+import { assert, beforeEach, expect, test, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { StatesMocks } from '/@/tests/state-mocks';
 import type { AvailableContextsInfo } from '@kubernetes-contexts/channels';
@@ -26,17 +26,21 @@ import { FakeStateObject } from '/@/state/util/fake-state-object.svelte';
 import ContextCard from '/@/component/ContextCard.svelte';
 import ContextsList from '/@/component/ContextsList.svelte';
 import { kubernetesIconBase64 } from '/@/component/KubeIcon';
+import type { ContextsHealthsInfo } from '@podman-desktop/kubernetes-dashboard-extension-api';
 
 vi.mock(import('/@/component/ContextCard.svelte'));
 
 const statesMocks = new StatesMocks();
 let availableContextsMock: FakeStateObject<AvailableContextsInfo, void>;
+let contextsHealthsMock: FakeStateObject<ContextsHealthsInfo, void>;
 
 beforeEach(() => {
   vi.resetAllMocks();
   statesMocks.reset();
   availableContextsMock = new FakeStateObject();
+  contextsHealthsMock = new FakeStateObject();
   statesMocks.mock<AvailableContextsInfo, void>('stateAvailableContextsInfoUI', availableContextsMock);
+  statesMocks.mock<ContextsHealthsInfo, void>('stateContextsHealthsInfoUI', contextsHealthsMock);
 });
 
 test('ContextCardLine should not render cards when no available contexts', () => {
@@ -114,5 +118,99 @@ test('ContextCardLine should render cards when available contexts', () => {
     currentContext: false,
     icon: kubernetesIconBase64,
     onEdit: expect.any(Function),
+  });
+});
+
+test('ContextCard is called with the correct health', async () => {
+  availableContextsMock.setData({
+    clusters: [
+      {
+        name: 'test-cluster-1',
+        server: 'https://test-cluster-1.com',
+        skipTLSVerify: false,
+      },
+      {
+        name: 'test-cluster-2',
+        server: 'https://test-cluster-2.com',
+        skipTLSVerify: false,
+      },
+    ],
+    users: [
+      {
+        name: 'test-user-1',
+      },
+      {
+        name: 'test-user-2',
+      },
+    ],
+    contexts: [
+      {
+        name: 'test-context-1',
+        namespace: 'test-namespace-1',
+        cluster: 'test-cluster-1',
+        user: 'test-user-1',
+      },
+      {
+        name: 'test-context-2',
+        cluster: 'test-cluster-2',
+        user: 'test-user-2',
+      },
+    ],
+    currentContext: 'test-context-1',
+  });
+  contextsHealthsMock.setData({
+    healths: [
+      {
+        contextName: 'test-context-1',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+      {
+        contextName: 'test-context-2',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+    ],
+  });
+  render(ContextsList);
+  expect(ContextCard).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      health: {
+        contextName: 'test-context-1',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+    }),
+  );
+  const contextCardMock = vi.mocked(ContextCard).mock.calls[0][1];
+  assert(contextCardMock);
+
+  // A new health state is received
+  vi.mocked(ContextCard).mockClear();
+  contextsHealthsMock.setData({
+    healths: [
+      {
+        contextName: 'test-context-1',
+        checking: false,
+        reachable: true,
+        offline: false,
+      },
+      {
+        contextName: 'test-context-2',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+    ],
+  });
+  expect(contextCardMock.health).toEqual({
+    contextName: 'test-context-1',
+    checking: false,
+    reachable: true,
+    offline: false,
   });
 });

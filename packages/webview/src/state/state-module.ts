@@ -22,6 +22,7 @@ import { States } from './states';
 import { StateObject } from './util/state-object.svelte';
 import { IDisposable } from '@kubernetes-contexts/channels';
 import { StateAvailableContextsInfo } from './available-contexts.svelte';
+import { StateContextsHealthsInfo } from '/@/state/contexts-healths.svelte';
 
 const statesModule = new ContainerModule(options => {
   options.bind(States).toSelf().inSingletonScope();
@@ -29,6 +30,10 @@ const statesModule = new ContainerModule(options => {
   options.bind(StateAvailableContextsInfo).toSelf().inSingletonScope();
   options.bind(StateObject).toService(StateAvailableContextsInfo);
   options.bind(IDisposable).toService(StateAvailableContextsInfo);
+
+  options.bind(StateContextsHealthsInfo).toSelf().inSingletonScope();
+  options.bind(StateObject).toService(StateContextsHealthsInfo);
+  options.bind(IDisposable).toService(StateContextsHealthsInfo);
 });
 
 export { statesModule };

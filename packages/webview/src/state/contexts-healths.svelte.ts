@@ -17,22 +17,24 @@
  ***********************************************************************/
 
 import { inject, injectable } from 'inversify';
-import { StateAvailableContextsInfo } from './available-contexts.svelte';
-import { StateContextsHealthsInfo } from '/@/state/contexts-healths.svelte';
 
+import { CONTEXT_HEALTHS } from '@kubernetes-contexts/channels';
+import { RpcBrowser } from '@kubernetes-contexts/rpc';
+
+import { AbsStateObjectImpl, type StateObject } from './util/state-object.svelte';
+import type { ContextsHealthsInfo } from '@podman-desktop/kubernetes-dashboard-extension-api';
+
+// Define a state for the ContextsHealthsInfo
 @injectable()
-export class States {
-  @inject(StateAvailableContextsInfo)
-  private _stateAvailableContextsInfoUI: StateAvailableContextsInfo;
-
-  get stateAvailableContextsInfoUI(): StateAvailableContextsInfo {
-    return this._stateAvailableContextsInfoUI;
+export class StateContextsHealthsInfo
+  extends AbsStateObjectImpl<ContextsHealthsInfo, void>
+  implements StateObject<ContextsHealthsInfo, void>
+{
+  constructor(@inject(RpcBrowser) rpcBrowser: RpcBrowser) {
+    super(rpcBrowser);
   }
 
-  @inject(StateContextsHealthsInfo)
-  private _stateContextsHealthsInfoUI: StateContextsHealthsInfo;
-
-  get stateContextsHealthsInfoUI(): StateContextsHealthsInfo {
-    return this._stateContextsHealthsInfoUI;
+  async init(): Promise<void> {
+    await this.initChannel(CONTEXT_HEALTHS);
   }
 }

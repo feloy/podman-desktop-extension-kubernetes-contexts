@@ -5,6 +5,8 @@ import SetCurrentContextAction from '/@/component/actions/SetCurrentContextActio
 import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 import DuplicateContextAction from '/@/component/actions/DuplicateContextAction.svelte';
 import EditContextAction from '/@/component/actions/EditContextAction.svelte';
+import type { ContextHealth } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import ContextStatus from '/@/component/ContextStatus.svelte';
 
 interface Props {
   cluster: Cluster;
@@ -12,11 +14,12 @@ interface Props {
   name: string;
   namespace?: string;
   currentContext: boolean;
+  health?: ContextHealth;
   icon: string;
   onEdit: () => void;
 }
 
-const { cluster, user, name, namespace, currentContext, icon, onEdit }: Props = $props();
+const { cluster, user, name, namespace, currentContext, health, icon, onEdit }: Props = $props();
 </script>
 
 <div role="row" aria-label={name} class="bg-(--pd-content-card-bg) mb-5 rounded-md p-3 flex-nowrap">
@@ -44,8 +47,7 @@ const { cluster, user, name, namespace, currentContext, icon, onEdit }: Props = 
       <div class="flex-none w-36">
         <div class="flex flex-col space-y-2">
           <div class="flex flex-row pt-2">
-            <div class="w-3 h-3 rounded-full bg-(--pd-status-disconnected)"></div>
-            <div class="ml-1 text-xs text-(--pd-status-disconnected)" aria-label="Context Unreachable">UNKNOWN</div>
+            <ContextStatus health={health} />
           </div>
         </div>
       </div>

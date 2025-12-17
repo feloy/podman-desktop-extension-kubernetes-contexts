@@ -1,0 +1,97 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`'offline state' > offline state 1`] = `
+<div>
+  <!---->
+  <!---->
+  <!---->
+  <!---->
+  <!---->
+  <div
+    class="w-3 h-3 rounded-full bg-(--pd-status-paused)"
+  />
+   
+  <div
+    aria-label="Context connection lost"
+    class="ml-1 text-xs text-(--pd-status-paused)"
+  >
+    CONNECTION LOST
+  </div>
+  
+  
+  
+  
+  
+  
+  
+</div>
+`;
+
+exports[`'reachable state' > reachable state 1`] = `
+<div>
+  <!---->
+  <!---->
+  <!---->
+  <div
+    class="w-3 h-3 rounded-full bg-(--pd-status-connected)"
+  />
+   
+  <div
+    aria-label="Context Reachable"
+    class="ml-1 text-xs text-(--pd-status-connected)"
+  >
+    REACHABLE
+  </div>
+  
+  
+  
+  
+  
+</div>
+`;
+
+exports[`'unknown state' > unknown state 1`] = `
+<div>
+  <!---->
+  <!---->
+  <div
+    class="w-3 h-3 rounded-full bg-(--pd-status-disconnected)"
+  />
+   
+  <div
+    aria-label="Context Unknown"
+    class="ml-1 text-xs text-(--pd-status-disconnected)"
+  >
+    UNKNOWN
+  </div>
+  
+  
+  
+  
+</div>
+`;
+
+exports[`'unreachable state' > unreachable state 1`] = `
+<div>
+  <!---->
+  <!---->
+  <!---->
+  <!---->
+  <div
+    class="w-3 h-3 rounded-full bg-(--pd-status-disconnected)"
+  />
+   
+  <div
+    aria-label="Context Unreachable"
+    class="ml-1 text-xs text-(--pd-status-disconnected)"
+  >
+    UNREACHABLE
+  </div>
+  
+  
+  
+  
+  
+  
+</div>
+`;

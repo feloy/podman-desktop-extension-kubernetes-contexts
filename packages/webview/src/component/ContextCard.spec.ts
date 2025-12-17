@@ -24,10 +24,12 @@ import ContextCard from '/@/component/ContextCard.svelte';
 import SetCurrentContextAction from '/@/component/actions/SetCurrentContextAction.svelte';
 import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 import DuplicateContextAction from '/@/component/actions/DuplicateContextAction.svelte';
+import ContextStatus from '/@/component/ContextStatus.svelte';
 
 vi.mock(import('/@/component/actions/SetCurrentContextAction.svelte'));
 vi.mock(import('/@/component/actions/DeleteContextAction.svelte'));
 vi.mock(import('/@/component/actions/DuplicateContextAction.svelte'));
+vi.mock(import('/@/component/ContextStatus.svelte'));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -89,4 +91,38 @@ test('ContextCard should render with no current context', () => {
   expect(SetCurrentContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
   expect(DeleteContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
   expect(DuplicateContextAction).toHaveBeenCalledWith(expect.anything(), { name: 'Test Context' });
+});
+
+test('ContextStatus should render with health', () => {
+  render(ContextCard, {
+    props: {
+      cluster: {
+        name: 'Test Cluster',
+        server: 'https://test.cluster',
+        skipTLSVerify: false,
+      },
+      user: {
+        name: 'Test User',
+      },
+      name: 'Test Context',
+      namespace: 'Test Namespace',
+      currentContext: true,
+      icon: '/my/icon',
+      onEdit: () => {},
+      health: {
+        contextName: 'ctx-1',
+        checking: false,
+        reachable: true,
+        offline: false,
+      },
+    },
+  });
+  expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    health: {
+      contextName: 'ctx-1',
+      checking: false,
+      reachable: true,
+      offline: false,
+    },
+  });
 });
