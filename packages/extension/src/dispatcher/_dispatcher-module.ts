@@ -20,6 +20,7 @@ import { ContainerModule } from 'inversify';
 import { DispatcherObject } from './util/dispatcher-object';
 import { AvailableContextsDispatcher } from './available-contexts-dispatcher';
 import { ContextsHealthsDispatcher } from '/@/dispatcher/contexts-healths-dispatcher';
+import { ResourcesCountDispatcher } from '/@/dispatcher/resources-counts-dispatcher';
 
 const dispatchersModule = new ContainerModule(options => {
   options.bind<AvailableContextsDispatcher>(AvailableContextsDispatcher).toSelf().inSingletonScope();
@@ -27,6 +28,9 @@ const dispatchersModule = new ContainerModule(options => {
 
   options.bind<ContextsHealthsDispatcher>(ContextsHealthsDispatcher).toSelf().inSingletonScope();
   options.bind(DispatcherObject).toService(ContextsHealthsDispatcher);
+
+  options.bind<ResourcesCountDispatcher>(ResourcesCountDispatcher).toSelf().inSingletonScope();
+  options.bind(DispatcherObject).toService(ResourcesCountDispatcher);
 });
 
 export { dispatchersModule };

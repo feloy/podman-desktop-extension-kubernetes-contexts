@@ -19,6 +19,7 @@
 import { Disposable, extensions } from '@podman-desktop/api';
 import {
   ContextsHealthsInfo,
+  ResourcesCountInfo,
   KubernetesDashboardExtensionApi,
   KubernetesDashboardSubscriber,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
@@ -30,9 +31,14 @@ export class DashboardStatesManager implements Disposable {
   #onContextsHealthChange = new Emitter<void>();
   onContextsHealthChange: Event<void> = this.#onContextsHealthChange.event;
 
+  #onResourcesCountChange = new Emitter<void>();
+  onResourcesCountChange: Event<void> = this.#onResourcesCountChange.event;
+
   #subscriptions: Disposable[] = [];
   #subscriber: KubernetesDashboardSubscriber | undefined;
+
   #contextsHealths: ContextsHealthsInfo = { healths: [] };
+  #resourcesCount: ResourcesCountInfo = { counts: [] };
 
   init(): void {
     const didChangeSubscription = extensions.onDidChange(() => {
@@ -49,6 +55,12 @@ export class DashboardStatesManager implements Disposable {
           // and we don't want to store it only when there are some subscribers
           this.#contextsHealths = event;
           this.#onContextsHealthChange.fire();
+        });
+        this.#subscriber.onResourcesCount(event => {
+          // We always store the resources counts locally as the information is very small
+          // and we don't want to store it only when there are some subscribers
+          this.#resourcesCount = event;
+          this.#onResourcesCountChange.fire();
         });
       }
     });
@@ -69,5 +81,9 @@ export class DashboardStatesManager implements Disposable {
 
   getContextsHealths(): ContextsHealthsInfo {
     return this.#contextsHealths;
+  }
+
+  getResourcesCount(): ResourcesCountInfo {
+    return this.#resourcesCount;
   }
 }
