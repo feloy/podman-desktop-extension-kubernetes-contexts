@@ -24,6 +24,7 @@ import { IDisposable } from '@kubernetes-contexts/channels';
 import { StateAvailableContextsInfo } from './available-contexts.svelte';
 import { StateContextsHealthsInfo } from '/@/state/contexts-healths.svelte';
 import { StateResourcesCountInfo } from '/@/state/resources-count.svelte';
+import { StateContextsPermissionsInfo } from '/@/state/contexts-permissions.svelte';
 
 const statesModule = new ContainerModule(options => {
   options.bind(States).toSelf().inSingletonScope();
@@ -39,6 +40,10 @@ const statesModule = new ContainerModule(options => {
   options.bind(StateResourcesCountInfo).toSelf().inSingletonScope();
   options.bind(StateObject).toService(StateResourcesCountInfo);
   options.bind(IDisposable).toService(StateResourcesCountInfo);
+
+  options.bind(StateContextsPermissionsInfo).toSelf().inSingletonScope();
+  options.bind(StateObject).toService(StateContextsPermissionsInfo);
+  options.bind(IDisposable).toService(StateContextsPermissionsInfo);
 });
 
 export { statesModule };
