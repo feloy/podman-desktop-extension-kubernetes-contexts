@@ -19,6 +19,7 @@
 import { inject, injectable } from 'inversify';
 import { StateAvailableContextsInfo } from './available-contexts.svelte';
 import { StateContextsHealthsInfo } from '/@/state/contexts-healths.svelte';
+import { StateResourcesCountInfo } from '/@/state/resources-count.svelte';
 
 @injectable()
 export class States {
@@ -34,5 +35,12 @@ export class States {
 
   get stateContextsHealthsInfoUI(): StateContextsHealthsInfo {
     return this._stateContextsHealthsInfoUI;
+  }
+
+  @inject(StateResourcesCountInfo)
+  private _stateResourcesCountInfoUI: StateResourcesCountInfo;
+
+  get stateResourcesCountInfoUI(): StateResourcesCountInfo {
+    return this._stateResourcesCountInfoUI;
   }
 }
