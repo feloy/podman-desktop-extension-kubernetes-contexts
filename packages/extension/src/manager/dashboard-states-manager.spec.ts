@@ -24,6 +24,7 @@ import {
   type ContextsHealthsInfo,
   type KubernetesDashboardExtensionApi,
   type KubernetesDashboardSubscriber,
+  type ContextsPermissionsInfo,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
 
 beforeEach(() => {
@@ -65,6 +66,7 @@ describe('dashboard extension is installed', () => {
   const disposeSubscriber: () => void = vi.fn();
   const onContextsHealth: (callback: (healthInfo: ContextsHealthsInfo) => void) => void = vi.fn();
   const onResourcesCount: (callback: (countInfo: ResourcesCountInfo) => void) => void = vi.fn();
+  const onContextsPermissions: (callback: (permissionsInfo: ContextsPermissionsInfo) => void) => void = vi.fn();
 
   beforeEach(() => {
     vi.mocked(extensions.onDidChange).mockImplementation(f => {
@@ -79,7 +81,7 @@ describe('dashboard extension is installed', () => {
       vi.mocked(subscriber).mockReturnValue({
         onContextsHealth: onContextsHealth,
         onResourcesCount: onResourcesCount,
-        onContextsPermissions: vi.fn(),
+        onContextsPermissions: onContextsPermissions,
         dispose: disposeSubscriber,
       } as unknown as KubernetesDashboardSubscriber);
       if (id === 'redhat.kubernetes-dashboard') {
@@ -118,6 +120,14 @@ describe('dashboard extension is installed', () => {
     manager.init();
     await vi.waitFor(() => {
       expect(onResourcesCount).toHaveBeenCalled();
+    });
+  });
+
+  test('onContextsPermissions is eventually called on subscriber', async () => {
+    manager = new DashboardStatesManager();
+    manager.init();
+    await vi.waitFor(() => {
+      expect(onContextsPermissions).toHaveBeenCalled();
     });
   });
 
@@ -172,6 +182,31 @@ describe('dashboard extension is installed', () => {
     expect(onResourcesCountChangeCallback).toHaveBeenCalled();
   });
 
+  test('when contextsPermissions callback is called, onContextsPermissionsChange is fired', async () => {
+    manager = new DashboardStatesManager();
+    const onContextsPermissionsChangeCallback: () => void = vi.fn();
+    manager.onContextsPermissionsChange(onContextsPermissionsChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onContextsPermissions).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onContextsPermissions).mock.calls[0][0];
+    assert(cb);
+    expect(onContextsPermissionsChangeCallback).not.toHaveBeenCalled();
+    cb!({
+      permissions: [
+        {
+          contextName: 'context1',
+          resourceName: 'resource1',
+          permitted: true,
+        },
+      ],
+    });
+    expect(onContextsPermissionsChangeCallback).toHaveBeenCalled();
+  });
+
   test('when contextsHealth callback is called, getContextsHealths returns the correct value', async () => {
     manager = new DashboardStatesManager();
     const onContextsHealthChangeCallback: () => void = vi.fn();
@@ -223,6 +258,32 @@ describe('dashboard extension is installed', () => {
     };
     cb!(newResourcesCount);
     expect(manager.getResourcesCount()).toEqual(newResourcesCount);
+  });
+
+  test('when contextsPermissions callback is called, getContextsPermissions returns the correct value', async () => {
+    manager = new DashboardStatesManager();
+    const onContextsPermissionsChangeCallback: () => void = vi.fn();
+    manager.onContextsPermissionsChange(onContextsPermissionsChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onContextsPermissions).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onContextsPermissions).mock.calls[0][0];
+    assert(cb);
+    expect(onContextsPermissionsChangeCallback).not.toHaveBeenCalled();
+    const newContextsPermissions: ContextsPermissionsInfo = {
+      permissions: [
+        {
+          contextName: 'context1',
+          resourceName: 'resource1',
+          permitted: true,
+        },
+      ],
+    };
+    cb!(newContextsPermissions);
+    expect(manager.getContextsPermissions()).toEqual(newContextsPermissions);
   });
 
   test('onDidChangeDisposable is called', () => {

@@ -22,6 +22,7 @@ import {
   ResourcesCountInfo,
   KubernetesDashboardExtensionApi,
   KubernetesDashboardSubscriber,
+  ContextsPermissionsInfo,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
 import { injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
@@ -34,11 +35,15 @@ export class DashboardStatesManager implements Disposable {
   #onResourcesCountChange = new Emitter<void>();
   onResourcesCountChange: Event<void> = this.#onResourcesCountChange.event;
 
+  #onContextsPermissionsChange = new Emitter<void>();
+  onContextsPermissionsChange: Event<void> = this.#onContextsPermissionsChange.event;
+
   #subscriptions: Disposable[] = [];
   #subscriber: KubernetesDashboardSubscriber | undefined;
 
   #contextsHealths: ContextsHealthsInfo = { healths: [] };
   #resourcesCount: ResourcesCountInfo = { counts: [] };
+  #contextsPermissions: ContextsPermissionsInfo = { permissions: [] };
 
   init(): void {
     const didChangeSubscription = extensions.onDidChange(() => {
@@ -50,17 +55,19 @@ export class DashboardStatesManager implements Disposable {
         // stop being notified when the extension is changed
         didChangeSubscription.dispose();
 
+        // We always store the contexts healths, resources permissions and count locally as the information is very small
+        // and we don't want to store it only when there are some subscribers
         this.#subscriber.onContextsHealth(event => {
-          // We always store the contexts healths locally as the information is very small
-          // and we don't want to store it only when there are some subscribers
           this.#contextsHealths = event;
           this.#onContextsHealthChange.fire();
         });
         this.#subscriber.onResourcesCount(event => {
-          // We always store the resources counts locally as the information is very small
-          // and we don't want to store it only when there are some subscribers
           this.#resourcesCount = event;
           this.#onResourcesCountChange.fire();
+        });
+        this.#subscriber.onContextsPermissions(event => {
+          this.#contextsPermissions = event;
+          this.#onContextsPermissionsChange.fire();
         });
       }
     });
@@ -85,5 +92,9 @@ export class DashboardStatesManager implements Disposable {
 
   getResourcesCount(): ResourcesCountInfo {
     return this.#resourcesCount;
+  }
+
+  getContextsPermissions(): ContextsPermissionsInfo {
+    return this.#contextsPermissions;
   }
 }
