@@ -19,8 +19,9 @@
 import type { ContextsApi } from './interface/contexts-api';
 import { createRpcChannel } from '@kubernetes-contexts/rpc';
 import type { AvailableContextsInfo } from '/@/model/available-contexts-info';
-import type { SubscribeApi } from '/@/interface';
 import type { ContextsHealthsInfo } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import type { SubscribeApi, OpenDialogApi } from '/@/interface';
+import type { OpenDialogResult } from '/@/model/open-dialog-result';
 
 // RPC channels (used by the webview to send requests to the extension)
 export const API_CONTEXTS = createRpcChannel<ContextsApi>('ContextsApi');
@@ -29,3 +30,7 @@ export const API_SUBSCRIBE = createRpcChannel<SubscribeApi>('SubscribeApi');
 // Broadcast events (sent by extension and received by the webview)
 export const AVAILABLE_CONTEXTS = createRpcChannel<AvailableContextsInfo>('AvailableContexts');
 export const CONTEXT_HEALTHS = createRpcChannel<ContextsHealthsInfo>('ContextsHealths');
+
+// Channels for requests expecting responses
+export const API_OPEN_DIALOG = createRpcChannel<OpenDialogApi>('OpenDialogApi');
+export const OPEN_DIALOG_RESULTS = createRpcChannel<OpenDialogResult>('OpenDialogResult');

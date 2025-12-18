@@ -25,7 +25,8 @@ import { readFile } from 'node:fs/promises';
 import { ContextsManager } from '/@/manager/contexts-manager';
 import { InversifyBinding } from '/@/inject/inversify-binding';
 import type { Container } from 'inversify';
-import { API_CONTEXTS, API_SUBSCRIBE, IDisposable } from '@kubernetes-contexts/channels';
+import { API_CONTEXTS, API_OPEN_DIALOG, API_SUBSCRIBE, IDisposable } from '@kubernetes-contexts/channels';
+import { OpenDialogApiImpl } from '/@/manager/open-dialog-api';
 import { ChannelSubscriber } from '/@/manager/channel-subscriber';
 import { Dispatcher } from '/@/manager/dispatcher';
 import { existsSync } from 'node:fs';
@@ -42,6 +43,7 @@ export class ContextsExtension {
   #channelSubscriber: ChannelSubscriber;
   #dispatcher: Dispatcher;
   #dashboardStatesManager: DashboardStatesManager;
+  #openDialogApiImpl: OpenDialogApiImpl;
 
   constructor(readonly extensionContext: ExtensionContext) {
     this.#extensionContext = extensionContext;
@@ -68,6 +70,7 @@ export class ContextsExtension {
     this.#dashboardStatesManager.init();
     this.#extensionContext.subscriptions.push(this.#dashboardStatesManager);
 
+    this.#openDialogApiImpl = await this.#container.getAsync(OpenDialogApiImpl);
     this.#dispatcher.init();
 
     const afterFirst = performance.now();
@@ -75,6 +78,7 @@ export class ContextsExtension {
     console.log('activation time:', afterFirst - now);
 
     rpcExtension.registerInstance(API_CONTEXTS, this.#contextsManager);
+    rpcExtension.registerInstance(API_OPEN_DIALOG, this.#openDialogApiImpl);
     rpcExtension.registerInstance(API_SUBSCRIBE, this.#channelSubscriber);
 
     const disposables = await this.#container.getAllAsync<IDisposable>(IDisposable);

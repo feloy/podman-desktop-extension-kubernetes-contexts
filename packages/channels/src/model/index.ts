@@ -17,3 +17,4 @@
  ***********************************************************************/
 
 export * from './available-contexts-info';
+export * from './open-dialog-result';
