@@ -20,6 +20,7 @@ import { afterEach, assert, beforeEach, describe, expect, test, vi } from 'vites
 import { DashboardStatesManager } from './dashboard-states-manager';
 import { type Disposable, type Extension, extensions } from '@podman-desktop/api';
 import {
+  type ResourcesCountInfo,
   type ContextsHealthsInfo,
   type KubernetesDashboardExtensionApi,
   type KubernetesDashboardSubscriber,
@@ -63,6 +64,7 @@ describe('dashboard extension is installed', () => {
   const subscriber: () => KubernetesDashboardSubscriber = vi.fn();
   const disposeSubscriber: () => void = vi.fn();
   const onContextsHealth: (callback: (healthInfo: ContextsHealthsInfo) => void) => void = vi.fn();
+  const onResourcesCount: (callback: (countInfo: ResourcesCountInfo) => void) => void = vi.fn();
 
   beforeEach(() => {
     vi.mocked(extensions.onDidChange).mockImplementation(f => {
@@ -76,8 +78,8 @@ describe('dashboard extension is installed', () => {
     vi.mocked(extensions.getExtension).mockImplementation(id => {
       vi.mocked(subscriber).mockReturnValue({
         onContextsHealth: onContextsHealth,
+        onResourcesCount: onResourcesCount,
         onContextsPermissions: vi.fn(),
-        onResourcesCount: vi.fn(),
         dispose: disposeSubscriber,
       } as unknown as KubernetesDashboardSubscriber);
       if (id === 'redhat.kubernetes-dashboard') {
@@ -111,6 +113,14 @@ describe('dashboard extension is installed', () => {
     });
   });
 
+  test('onResourcesCount is eventually called on subscriber', async () => {
+    manager = new DashboardStatesManager();
+    manager.init();
+    await vi.waitFor(() => {
+      expect(onResourcesCount).toHaveBeenCalled();
+    });
+  });
+
   test('when contextsHealth callback is called, onContextsHealthChange is fired', async () => {
     manager = new DashboardStatesManager();
     const onContextsHealthChangeCallback: () => void = vi.fn();
@@ -135,6 +145,31 @@ describe('dashboard extension is installed', () => {
       ],
     });
     expect(onContextsHealthChangeCallback).toHaveBeenCalled();
+  });
+
+  test('when resourcesCount callback is called, onResourcesCountChange is fired', async () => {
+    manager = new DashboardStatesManager();
+    const onResourcesCountChangeCallback: () => void = vi.fn();
+    manager.onResourcesCountChange(onResourcesCountChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onResourcesCount).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onResourcesCount).mock.calls[0][0];
+    assert(cb);
+    expect(onResourcesCountChangeCallback).not.toHaveBeenCalled();
+    cb!({
+      counts: [
+        {
+          contextName: 'context1',
+          resourceName: 'resource1',
+          count: 1,
+        },
+      ],
+    });
+    expect(onResourcesCountChangeCallback).toHaveBeenCalled();
   });
 
   test('when contextsHealth callback is called, getContextsHealths returns the correct value', async () => {
@@ -162,6 +197,32 @@ describe('dashboard extension is installed', () => {
     };
     cb!(newContextsHealths);
     expect(manager.getContextsHealths()).toEqual(newContextsHealths);
+  });
+
+  test('when resourcesCount callback is called, getResourcesCount returns the correct value', async () => {
+    manager = new DashboardStatesManager();
+    const onResourcesCountChangeCallback: () => void = vi.fn();
+    manager.onResourcesCountChange(onResourcesCountChangeCallback);
+
+    manager.init();
+
+    await vi.waitFor(() => {
+      expect(onResourcesCount).toHaveBeenCalled();
+    });
+    const cb = vi.mocked(onResourcesCount).mock.calls[0][0];
+    assert(cb);
+    expect(onResourcesCountChangeCallback).not.toHaveBeenCalled();
+    const newResourcesCount: ResourcesCountInfo = {
+      counts: [
+        {
+          contextName: 'context1',
+          resourceName: 'resource1',
+          count: 1,
+        },
+      ],
+    };
+    cb!(newResourcesCount);
+    expect(manager.getResourcesCount()).toEqual(newResourcesCount);
   });
 
   test('onDidChangeDisposable is called', () => {
