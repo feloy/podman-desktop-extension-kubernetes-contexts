@@ -26,21 +26,31 @@ import { FakeStateObject } from '/@/state/util/fake-state-object.svelte';
 import ContextCard from '/@/component/ContextCard.svelte';
 import ContextsList from '/@/component/ContextsList.svelte';
 import { kubernetesIconBase64 } from '/@/component/KubeIcon';
-import type { ContextsHealthsInfo } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import type {
+  ContextsHealthsInfo,
+  ContextsPermissionsInfo,
+  ResourcesCountInfo,
+} from '@podman-desktop/kubernetes-dashboard-extension-api';
 
 vi.mock(import('/@/component/ContextCard.svelte'));
 
 const statesMocks = new StatesMocks();
 let availableContextsMock: FakeStateObject<AvailableContextsInfo, void>;
 let contextsHealthsMock: FakeStateObject<ContextsHealthsInfo, void>;
+let contextsPermissionsMock: FakeStateObject<ContextsPermissionsInfo, void>;
+let resourcesCountMock: FakeStateObject<ResourcesCountInfo, void>;
 
 beforeEach(() => {
   vi.resetAllMocks();
   statesMocks.reset();
   availableContextsMock = new FakeStateObject();
   contextsHealthsMock = new FakeStateObject();
+  contextsPermissionsMock = new FakeStateObject();
+  resourcesCountMock = new FakeStateObject();
   statesMocks.mock<AvailableContextsInfo, void>('stateAvailableContextsInfoUI', availableContextsMock);
   statesMocks.mock<ContextsHealthsInfo, void>('stateContextsHealthsInfoUI', contextsHealthsMock);
+  statesMocks.mock<ContextsPermissionsInfo, void>('stateContextsPermissionsInfoUI', contextsPermissionsMock);
+  statesMocks.mock<ResourcesCountInfo, void>('stateResourcesCountInfoUI', resourcesCountMock);
 });
 
 test('ContextCardLine should not render cards when no available contexts', () => {
@@ -213,4 +223,228 @@ test('ContextCard is called with the correct health', async () => {
     reachable: true,
     offline: false,
   });
+});
+
+test('ContextCard is called with the correct permissions', async () => {
+  availableContextsMock.setData({
+    clusters: [
+      {
+        name: 'test-cluster-1',
+        server: 'https://test-cluster-1.com',
+        skipTLSVerify: false,
+      },
+      {
+        name: 'test-cluster-2',
+        server: 'https://test-cluster-2.com',
+        skipTLSVerify: false,
+      },
+    ],
+    users: [
+      {
+        name: 'test-user-1',
+      },
+      {
+        name: 'test-user-2',
+      },
+    ],
+    contexts: [
+      {
+        name: 'test-context-1',
+        namespace: 'test-namespace-1',
+        cluster: 'test-cluster-1',
+        user: 'test-user-1',
+      },
+      {
+        name: 'test-context-2',
+        cluster: 'test-cluster-2',
+        user: 'test-user-2',
+      },
+    ],
+    currentContext: 'test-context-1',
+  });
+  contextsPermissionsMock.setData({
+    permissions: [
+      {
+        contextName: 'test-context-1',
+        resourceName: 'pods',
+        permitted: true,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'deployments',
+        permitted: false,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'services',
+        permitted: false,
+      },
+      {
+        contextName: 'test-context-2',
+        resourceName: 'pods',
+        permitted: false,
+      },
+    ],
+  });
+  render(ContextsList);
+  expect(ContextCard).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      contextsPermissions: [
+        {
+          contextName: 'test-context-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'test-context-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    }),
+  );
+  const contextCardMock = vi.mocked(ContextCard).mock.calls[0][1];
+  assert(contextCardMock);
+
+  // A new permissions state is received
+  vi.mocked(ContextCard).mockClear();
+  contextsPermissionsMock.setData({
+    permissions: [
+      {
+        contextName: 'test-context-1',
+        resourceName: 'pods',
+        permitted: false,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'deployments',
+        permitted: true,
+      },
+    ],
+  });
+  expect(contextCardMock.contextsPermissions).toEqual([
+    {
+      contextName: 'test-context-1',
+      resourceName: 'pods',
+      permitted: false,
+    },
+    {
+      contextName: 'test-context-1',
+      resourceName: 'deployments',
+      permitted: true,
+    },
+  ]);
+});
+
+test('ContextCard is called with the correct resources counts', async () => {
+  availableContextsMock.setData({
+    clusters: [
+      {
+        name: 'test-cluster-1',
+        server: 'https://test-cluster-1.com',
+        skipTLSVerify: false,
+      },
+      {
+        name: 'test-cluster-2',
+        server: 'https://test-cluster-2.com',
+        skipTLSVerify: false,
+      },
+    ],
+    users: [
+      {
+        name: 'test-user-1',
+      },
+      {
+        name: 'test-user-2',
+      },
+    ],
+    contexts: [
+      {
+        name: 'test-context-1',
+        namespace: 'test-namespace-1',
+        cluster: 'test-cluster-1',
+        user: 'test-user-1',
+      },
+      {
+        name: 'test-context-2',
+        cluster: 'test-cluster-2',
+        user: 'test-user-2',
+      },
+    ],
+    currentContext: 'test-context-1',
+  });
+  resourcesCountMock.setData({
+    counts: [
+      {
+        contextName: 'test-context-1',
+        resourceName: 'pods',
+        count: 1,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'deployments',
+        count: 2,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'services',
+        count: 3,
+      },
+      {
+        contextName: 'test-context-2',
+        resourceName: 'pods',
+        count: 4,
+      },
+    ],
+  });
+  render(ContextsList);
+  expect(ContextCard).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      resourcesCount: [
+        {
+          contextName: 'test-context-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+        {
+          contextName: 'test-context-1',
+          resourceName: 'deployments',
+          count: 2,
+        },
+      ],
+    }),
+  );
+  const contextCardMock = vi.mocked(ContextCard).mock.calls[0][1];
+  assert(contextCardMock);
+
+  // A new resources count state is received
+  vi.mocked(ContextCard).mockClear();
+  resourcesCountMock.setData({
+    counts: [
+      {
+        contextName: 'test-context-1',
+        resourceName: 'pods',
+        count: 11,
+      },
+      {
+        contextName: 'test-context-1',
+        resourceName: 'deployments',
+        count: 12,
+      },
+    ],
+  });
+  expect(contextCardMock.resourcesCount).toEqual([
+    {
+      contextName: 'test-context-1',
+      resourceName: 'pods',
+      count: 11,
+    },
+    {
+      contextName: 'test-context-1',
+      resourceName: 'deployments',
+      count: 12,
+    },
+  ]);
 });
