@@ -21,6 +21,7 @@ import { DispatcherObject } from './util/dispatcher-object';
 import { AvailableContextsDispatcher } from './available-contexts-dispatcher';
 import { ContextsHealthsDispatcher } from '/@/dispatcher/contexts-healths-dispatcher';
 import { ResourcesCountDispatcher } from '/@/dispatcher/resources-counts-dispatcher';
+import { ContextsPermissionsDispatcher } from '/@/dispatcher/contexts-permissions-dispatcher';
 
 const dispatchersModule = new ContainerModule(options => {
   options.bind<AvailableContextsDispatcher>(AvailableContextsDispatcher).toSelf().inSingletonScope();
@@ -31,6 +32,9 @@ const dispatchersModule = new ContainerModule(options => {
 
   options.bind<ResourcesCountDispatcher>(ResourcesCountDispatcher).toSelf().inSingletonScope();
   options.bind(DispatcherObject).toService(ResourcesCountDispatcher);
+
+  options.bind<ContextsPermissionsDispatcher>(ContextsPermissionsDispatcher).toSelf().inSingletonScope();
+  options.bind(DispatcherObject).toService(ContextsPermissionsDispatcher);
 });
 
 export { dispatchersModule };

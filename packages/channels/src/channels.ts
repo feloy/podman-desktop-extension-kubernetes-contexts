@@ -19,7 +19,11 @@
 import type { ContextsApi } from './interface/contexts-api';
 import { createRpcChannel } from '@kubernetes-contexts/rpc';
 import type { AvailableContextsInfo } from '/@/model/available-contexts-info';
-import type { ContextsHealthsInfo, ResourcesCountInfo } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import type {
+  ContextsHealthsInfo,
+  ContextsPermissionsInfo,
+  ResourcesCountInfo,
+} from '@podman-desktop/kubernetes-dashboard-extension-api';
 import type { SubscribeApi, OpenDialogApi } from '/@/interface';
 import type { OpenDialogResult } from '/@/model/open-dialog-result';
 
@@ -31,6 +35,7 @@ export const API_SUBSCRIBE = createRpcChannel<SubscribeApi>('SubscribeApi');
 export const AVAILABLE_CONTEXTS = createRpcChannel<AvailableContextsInfo>('AvailableContexts');
 export const CONTEXT_HEALTHS = createRpcChannel<ContextsHealthsInfo>('ContextsHealths');
 export const RESOURCES_COUNT = createRpcChannel<ResourcesCountInfo>('ResourcesCount');
+export const CONTEXTS_PERMISSIONS = createRpcChannel<ContextsPermissionsInfo>('ContextsPermissions');
 
 // Channels for requests expecting responses
 export const API_OPEN_DIALOG = createRpcChannel<OpenDialogApi>('OpenDialogApi');
