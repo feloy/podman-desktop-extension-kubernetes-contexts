@@ -21,6 +21,9 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import ContextStatus from '/@/component/ContextStatus.svelte';
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import type { ContextHealth } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import ContextResources from '/@/component/ContextResources.svelte';
+
+vi.mock(import('/@/component/ContextResources.svelte'));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -41,13 +44,6 @@ test.each<TestCase>([
     expectedAriaLabel: 'Context Unknown',
     expectedDisplayedText: 'UNKNOWN',
     expectedClass: '--pd-status-disconnected',
-  },
-  {
-    name: 'reachable state',
-    health: { contextName: 'ctx-1', checking: false, reachable: true, offline: false },
-    expectedAriaLabel: 'Context Reachable',
-    expectedDisplayedText: 'REACHABLE',
-    expectedClass: '--pd-status-connected',
   },
   {
     name: 'unreachable state',
@@ -96,4 +92,97 @@ test('a tooltip should be rendered when the error message is defined and the too
   const slot = screen.getByTestId('tooltip-trigger');
   await fireEvent.mouseEnter(slot);
   expect(getByText('An error message')).toBeInTheDocument();
+});
+
+test('ContextResources should be rendered when reachable state', () => {
+  const { container, getByText } = render(ContextStatus, {
+    props: {
+      health: {
+        contextName: 'ctx-1',
+        checking: false,
+        reachable: true,
+        offline: false,
+      },
+      resourcesCount: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+      ],
+      contextsPermissions: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    },
+  });
+
+  getByText('REACHABLE');
+  expect(within(container).getByLabelText('Context Reachable').getAttribute('class')).toContain(
+    `text-(--pd-status-connected)`,
+  );
+
+  expect(ContextResources).toHaveBeenCalledWith(expect.anything(), {
+    resourcesCount: [
+      {
+        contextName: 'ctx-1',
+        resourceName: 'pods',
+        count: 1,
+      },
+    ],
+    contextsPermissions: [
+      {
+        contextName: 'ctx-1',
+        resourceName: 'pods',
+        permitted: true,
+      },
+      {
+        contextName: 'ctx-1',
+        resourceName: 'deployments',
+        permitted: false,
+      },
+    ],
+  });
+});
+
+test('ContextResources should not be rendered when unreachable state', () => {
+  render(ContextStatus, {
+    props: {
+      health: {
+        contextName: 'ctx-1',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+      resourcesCount: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+      ],
+      contextsPermissions: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    },
+  });
+
+  expect(ContextResources).not.toHaveBeenCalled();
 });

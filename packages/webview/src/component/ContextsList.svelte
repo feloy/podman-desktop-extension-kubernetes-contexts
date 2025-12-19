@@ -8,9 +8,12 @@ import type { Context } from '@kubernetes/client-node';
 import EditModal from '/@/component/EditModal.svelte';
 import type { Unsubscriber } from 'svelte/store';
 
+const DISPLAYED_RESOURCES = ['deployments', 'pods'];
 const states = getContext<States>(States);
 const availableContexts = states.stateAvailableContextsInfoUI;
 const contextsHealths = states.stateContextsHealthsInfoUI;
+const contextsPermissions = states.stateContextsPermissionsInfoUI;
+const resourcesCount = states.stateResourcesCountInfoUI;
 
 let contextToEdit = $state<Context>();
 let subscribers: Unsubscriber[] = [];
@@ -18,6 +21,8 @@ let subscribers: Unsubscriber[] = [];
 onMount(() => {
   subscribers.push(availableContexts.subscribe());
   subscribers.push(contextsHealths.subscribe());
+  subscribers.push(contextsPermissions.subscribe());
+  subscribers.push(resourcesCount.subscribe());
 });
 
 onDestroy(() => {
@@ -48,6 +53,13 @@ function closeEditModal(): void {
               {#if cluster && user}
                 <ContextCard
                   health={contextsHealths.data?.healths.find(health => health.contextName === context.name)}
+                  resourcesCount={resourcesCount.data?.counts.filter(
+                    count => count.contextName === context.name && DISPLAYED_RESOURCES.includes(count.resourceName),
+                  )}
+                  contextsPermissions={contextsPermissions.data?.permissions.filter(
+                    permission =>
+                      permission.contextName === context.name && DISPLAYED_RESOURCES.includes(permission.resourceName),
+                  )}
                   cluster={cluster}
                   user={user}
                   name={context.name}

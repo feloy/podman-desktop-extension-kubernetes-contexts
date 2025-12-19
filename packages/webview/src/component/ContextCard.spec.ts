@@ -126,3 +126,95 @@ test('ContextStatus should render with health', () => {
     },
   });
 });
+
+test('ContextStatus should render with permissions', () => {
+  render(ContextCard, {
+    props: {
+      cluster: {
+        name: 'Test Cluster',
+        server: 'https://test.cluster',
+        skipTLSVerify: false,
+      },
+      user: {
+        name: 'Test User',
+      },
+      name: 'Test Context',
+      namespace: 'Test Namespace',
+      currentContext: true,
+      icon: '/my/icon',
+      onEdit: () => {},
+      contextsPermissions: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    },
+  });
+  expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    contextsPermissions: [
+      {
+        contextName: 'ctx-1',
+        resourceName: 'pods',
+        permitted: true,
+      },
+      {
+        contextName: 'ctx-1',
+        resourceName: 'deployments',
+        permitted: false,
+      },
+    ],
+  });
+});
+
+test('ContextStatus should render with resources count', () => {
+  render(ContextCard, {
+    props: {
+      cluster: {
+        name: 'Test Cluster',
+        server: 'https://test.cluster',
+        skipTLSVerify: false,
+      },
+      user: {
+        name: 'Test User',
+      },
+      name: 'Test Context',
+      namespace: 'Test Namespace',
+      currentContext: true,
+      icon: '/my/icon',
+      onEdit: () => {},
+      resourcesCount: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          count: 2,
+        },
+      ],
+    },
+  });
+  expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    resourcesCount: [
+      {
+        contextName: 'ctx-1',
+        resourceName: 'pods',
+        count: 1,
+      },
+      {
+        contextName: 'ctx-1',
+        resourceName: 'deployments',
+        count: 2,
+      },
+    ],
+  });
+});
