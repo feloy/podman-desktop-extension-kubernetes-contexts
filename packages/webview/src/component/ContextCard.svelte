@@ -5,7 +5,11 @@ import SetCurrentContextAction from '/@/component/actions/SetCurrentContextActio
 import DeleteContextAction from '/@/component/actions/DeleteContextAction.svelte';
 import DuplicateContextAction from '/@/component/actions/DuplicateContextAction.svelte';
 import EditContextAction from '/@/component/actions/EditContextAction.svelte';
-import type { ContextHealth } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import type {
+  ContextHealth,
+  ContextPermission,
+  ResourceCount,
+} from '@podman-desktop/kubernetes-dashboard-extension-api';
 import ContextStatus from '/@/component/ContextStatus.svelte';
 
 interface Props {
@@ -15,11 +19,24 @@ interface Props {
   namespace?: string;
   currentContext: boolean;
   health?: ContextHealth;
+  contextsPermissions?: ContextPermission[];
+  resourcesCount?: ResourceCount[];
   icon: string;
   onEdit: () => void;
 }
 
-const { cluster, user, name, namespace, currentContext, health, icon, onEdit }: Props = $props();
+const {
+  cluster,
+  user,
+  name,
+  namespace,
+  currentContext,
+  health,
+  contextsPermissions,
+  resourcesCount,
+  icon,
+  onEdit,
+}: Props = $props();
 </script>
 
 <div role="row" aria-label={name} class="bg-(--pd-content-card-bg) mb-5 rounded-md p-3 flex-nowrap">
@@ -44,11 +61,9 @@ const { cluster, user, name, namespace, currentContext, health, icon, onEdit }: 
   </div>
   <div class="grow flex-column divide-gray-900 text-(--pd-content-card-text)">
     <div class="flex flex-row">
-      <div class="flex-none w-36">
+      <div class="flex-none w-40">
         <div class="flex flex-col space-y-2">
-          <div class="flex flex-row pt-2">
-            <ContextStatus health={health} />
-          </div>
+          <ContextStatus health={health} resourcesCount={resourcesCount} contextsPermissions={contextsPermissions} />
         </div>
       </div>
       <div class="grow text-sm">
