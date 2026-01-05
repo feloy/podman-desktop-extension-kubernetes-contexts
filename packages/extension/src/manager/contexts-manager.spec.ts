@@ -28,6 +28,7 @@ beforeEach(() => {
 });
 
 vi.mock(import('node:fs/promises'));
+vi.mock(import('node:fs'));
 
 test('default KubeConfig should be empty', () => {
   const contextsManager = new ContextsManager();
@@ -863,4 +864,382 @@ test('should update the user updating context from config', async () => {
   });
   const contexts2 = contextsManager.getKubeConfig().getContexts();
   expect(contexts2[0].user).toBe('user2');
+});
+
+describe('getImportContexts', () => {
+  test('should return contexts with server info and no conflicts', async () => {
+    const kubeConfigPath = '/path/to/kubeconfig.yaml';
+    vol.fromJSON({ [kubeConfigPath]: '' });
+
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig, filePath: unknown) {
+      if (filePath === kubeConfigPath) {
+        this.loadFromString(`
+          clusters:
+            - name: test-cluster
+              cluster:
+                server: https://test-server:6443
+          users:
+            - name: test-user
+          contexts:
+            - name: test-context
+              context:
+                cluster: test-cluster
+                user: test-user
+                namespace: default
+          current-context: test-context
+        `);
+      }
+    });
+
+    const contextsManager = new ContextsManager();
+    const result = await contextsManager.getImportContexts(kubeConfigPath);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('test-context');
+    expect(result[0].cluster).toBe('test-cluster');
+    expect(result[0].user).toBe('test-user');
+    expect(result[0].namespace).toBe('default');
+    expect(result[0].server).toBe('https://test-server:6443');
+    expect(result[0].hasConflict).toBe(false);
+  });
+
+  test('should return empty array if file does not exist', async () => {
+    const contextsManager = new ContextsManager();
+
+    const result = await contextsManager.getImportContexts('/nonexistent/file');
+    expect(result).toEqual([]);
+    expect(window.showNotification).toHaveBeenCalledWith({
+      title: 'Error getting import contexts',
+      body: 'Kubeconfig file /nonexistent/file does not exist',
+      type: 'error',
+      highlight: true,
+    });
+  });
+
+  test('should return empty array if kubeconfig parsing fails', async () => {
+    const kubeConfigPath = '/path/to/invalid.yaml';
+    vol.fromJSON({ [kubeConfigPath]: '' });
+
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(() => {
+      throw new Error('Invalid YAML');
+    });
+
+    const contextsManager = new ContextsManager();
+
+    const result = await contextsManager.getImportContexts(kubeConfigPath);
+    expect(result).toEqual([]);
+    expect(window.showNotification).toHaveBeenCalledWith({
+      title: 'Error getting import contexts',
+      body: 'Failed to parse kubeconfig file /path/to/invalid.yaml: Error: Invalid YAML',
+      type: 'error',
+      highlight: true,
+    });
+  });
+
+  test('should return multiple contexts', async () => {
+    const kubeConfigPath = '/path/to/kubeconfig.yaml';
+    vol.fromJSON({ [kubeConfigPath]: '' });
+
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig, filePath: unknown) {
+      if (filePath === kubeConfigPath) {
+        this.loadFromString(`
+          clusters:
+            - name: cluster1
+              cluster:
+                server: https://cluster1:6443
+            - name: cluster2
+              cluster:
+                server: https://cluster2:6443
+          users:
+            - name: user1
+            - name: user2
+          contexts:
+            - name: context1
+              context:
+                cluster: cluster1
+                user: user1
+            - name: context2
+              context:
+                cluster: cluster2
+                user: user2
+          current-context: context1
+        `);
+      }
+    });
+
+    const contextsManager = new ContextsManager();
+    const result = await contextsManager.getImportContexts(kubeConfigPath);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe('context1');
+    expect(result[0].server).toBe('https://cluster1:6443');
+    expect(result[1].name).toBe('context2');
+    expect(result[1].server).toBe('https://cluster2:6443');
+  });
+
+  test('should detect conflicts with existing contexts', async () => {
+    const kubeConfigPath = '/path/to/kubeconfig.yaml';
+    vol.fromJSON({ [kubeConfigPath]: '' });
+
+    // First set up the current config with an existing context
+    const contextsManager = new ContextsManager();
+    const currentConfig = new KubeConfig();
+    currentConfig.loadFromString(`
+      clusters:
+        - name: existing-cluster
+          cluster:
+            server: https://existing:6443
+      users:
+        - name: existing-user
+      contexts:
+        - name: existing-context
+          context:
+            cluster: existing-cluster
+            user: existing-user
+      current-context: existing-context
+    `);
+    await contextsManager.update(currentConfig);
+
+    // Now mock the import file with a conflicting context name
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig, filePath: unknown) {
+      if (filePath === kubeConfigPath) {
+        this.loadFromString(`
+          clusters:
+            - name: new-cluster
+              cluster:
+                server: https://new:6443
+          users:
+            - name: new-user
+          contexts:
+            - name: existing-context
+              context:
+                cluster: new-cluster
+                user: new-user
+            - name: new-context
+              context:
+                cluster: new-cluster
+                user: new-user
+          current-context: existing-context
+        `);
+      }
+    });
+
+    const result = await contextsManager.getImportContexts(kubeConfigPath);
+
+    expect(result).toHaveLength(2);
+    // existing-context should have conflict
+    expect(result[0].name).toBe('existing-context');
+    expect(result[0].hasConflict).toBe(true);
+    // new-context should not have conflict
+    expect(result[1].name).toBe('new-context');
+    expect(result[1].hasConflict).toBe(false);
+  });
+});
+
+describe('importContextsFromFile', () => {
+  const kubeConfigPath = '/path/to/kube/config';
+  const importFilePath = '/path/to/import.yaml';
+
+  beforeEach(() => {
+    vol.fromJSON({
+      [kubeConfigPath]: '',
+    });
+    vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
+      path: kubeConfigPath,
+    } as Uri);
+  });
+
+  test('should import new context without conflict', async () => {
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig) {
+      this.loadFromString(`
+          clusters:
+            - name: new-cluster
+              cluster:
+                server: https://new:6443
+          users:
+            - name: new-user
+          contexts:
+            - name: new-context
+              context:
+                cluster: new-cluster
+                user: new-user
+          current-context: new-context
+        `);
+    });
+
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromString(`
+      clusters:
+        - name: existing-cluster
+          cluster:
+            server: https://existing:6443
+      users:
+        - name: existing-user
+      contexts:
+        - name: existing-context
+          context:
+            cluster: existing-cluster
+            user: existing-user
+      current-context: existing-context
+    `);
+    await contextsManager.update(kubeConfig);
+
+    expect(contextsManager.getKubeConfig().contexts).toHaveLength(1);
+
+    await contextsManager.importContextsFromFile(importFilePath, ['new-context'], {});
+
+    expect(contextsManager.getKubeConfig().contexts).toHaveLength(2);
+    expect(contextsManager.getKubeConfig().contexts.find(c => c.name === 'new-context')).toBeDefined();
+  });
+
+  test('should replace existing context with replace resolution', async () => {
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig) {
+      this.loadFromString(`
+          clusters:
+            - name: new-cluster
+              cluster:
+                server: https://new:6443
+          users:
+            - name: new-user
+          contexts:
+            - name: test-context
+              context:
+                cluster: new-cluster
+                user: new-user
+          current-context: test-context
+        `);
+    });
+
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromString(`
+      clusters:
+        - name: old-cluster
+          cluster:
+            server: https://old:6443
+      users:
+        - name: old-user
+      contexts:
+        - name: test-context
+          context:
+            cluster: old-cluster
+            user: old-user
+      current-context: test-context
+    `);
+    await contextsManager.update(kubeConfig);
+
+    await contextsManager.importContextsFromFile(importFilePath, ['test-context'], {
+      'test-context': 'replace',
+    });
+
+    const contexts = contextsManager.getKubeConfig().contexts;
+    expect(contexts).toHaveLength(1);
+    expect(contexts[0].name).toBe('test-context');
+    expect(contexts[0].cluster).toBe('new-cluster');
+  });
+
+  test('should keep both contexts with keep-both resolution', async () => {
+    const loadFromFileSpy = vi.spyOn(KubeConfig.prototype, 'loadFromFile');
+    loadFromFileSpy.mockImplementation(function (this: KubeConfig) {
+      this.loadFromString(`
+          clusters:
+            - name: new-cluster
+              cluster:
+                server: https://new:6443
+          users:
+            - name: new-user
+          contexts:
+            - name: test-context
+              context:
+                cluster: new-cluster
+                user: new-user
+          current-context: test-context
+        `);
+    });
+
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromString(`
+      clusters:
+        - name: old-cluster
+          cluster:
+            server: https://old:6443
+      users:
+        - name: old-user
+      contexts:
+        - name: test-context
+          context:
+            cluster: old-cluster
+            user: old-user
+      current-context: test-context
+    `);
+    await contextsManager.update(kubeConfig);
+
+    await contextsManager.importContextsFromFile(importFilePath, ['test-context'], {
+      'test-context': 'keep-both',
+    });
+
+    const contexts = contextsManager.getKubeConfig().contexts;
+    expect(contexts).toHaveLength(2);
+    expect(contexts.find(c => c.name === 'test-context')).toBeDefined();
+    expect(contexts.find(c => c.name === 'test-context-1')).toBeDefined();
+  });
+});
+
+describe('findNewContextName', () => {
+  test('should generate unique context name', () => {
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromOptions({
+      clusters: [],
+      users: [],
+      contexts: [
+        { name: 'existing-1', cluster: 'c1', user: 'u1' },
+        { name: 'existing-2', cluster: 'c2', user: 'u2' },
+      ],
+      currentContext: 'existing-1',
+    });
+
+    // existing-1 and existing-2 exist, so next is existing-3
+    const newName = contextsManager.findNewContextName(kubeConfig, 'existing');
+    expect(newName).toBe('existing-3');
+  });
+
+  test('should increment counter if name already exists', () => {
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromOptions({
+      clusters: [],
+      users: [],
+      contexts: [
+        { name: 'existing-1', cluster: 'c1', user: 'u1' },
+        { name: 'existing-2', cluster: 'c2', user: 'u2' },
+      ],
+      currentContext: 'existing-1',
+    });
+
+    const newName = contextsManager.findNewContextName(kubeConfig, 'existing-1');
+    expect(newName).toBe('existing-1-1');
+  });
+
+  test('should handle empty contexts array', () => {
+    const contextsManager = new ContextsManager();
+    const kubeConfig = new KubeConfig();
+    kubeConfig.loadFromOptions({
+      clusters: [],
+      users: [],
+      contexts: [],
+      currentContext: '',
+    });
+
+    const newName = contextsManager.findNewContextName(kubeConfig, 'test');
+    expect(newName).toBe('test-1');
+  });
 });

@@ -16,20 +16,13 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import type { Context } from '@kubernetes/client-node';
-import type { ImportContextInfo } from '/@/model/import-context-info';
-
-export const ContextsApi = Symbol.for('ContextsApi');
-
-export interface ContextsApi {
-  setCurrentContext(contextName: string): Promise<void>;
-  deleteContext(contextName: string): Promise<void>;
-  duplicateContext(contextName: string): Promise<void>;
-  editContext(contextName: string, newContext: Context): Promise<void>;
-  getImportContexts(filePath: string): Promise<ImportContextInfo[]>;
-  importContextsFromFile(
-    filePath: string,
-    selectedContexts: string[],
-    conflictResolutions: Record<string, 'keep-both' | 'replace'>,
-  ): Promise<void>;
+export interface ImportContextInfo {
+  name: string;
+  cluster: string;
+  user: string;
+  namespace?: string;
+  // Server URL from the cluster
+  server?: string;
+  // Whether this context already exists in current kubeconfig
+  hasConflict: boolean;
 }

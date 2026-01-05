@@ -16,12 +16,13 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import { ContextsApi } from '@kubernetes-contexts/channels';
+import { ContextsApi, ImportContextInfo } from '@kubernetes-contexts/channels';
 import { injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
-import { Context, KubeConfig } from '@kubernetes/client-node';
+import { Cluster, Context, KubeConfig, User } from '@kubernetes/client-node';
 import { kubernetes, window } from '@podman-desktop/api';
 import { writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import * as jsYaml from 'js-yaml';
 
 @injectable()
@@ -211,5 +212,223 @@ export class ContextsManager implements ContextsApi {
         highlight: true,
       });
     }
+  }
+
+  /**
+   * Parse a kubeconfig file and return contexts with conflict information
+   *
+   * @param filePath path to the kubeconfig file
+   * @returns Array of ImportContextInfo with conflict info
+   */
+  async getImportContexts(filePath: string): Promise<ImportContextInfo[]> {
+    // Check if file exists
+    if (!existsSync(filePath)) {
+      window.showNotification({
+        title: 'Error getting import contexts',
+        body: `Kubeconfig file ${filePath} does not exist`,
+        type: 'error',
+        highlight: true,
+      });
+      return [];
+    }
+
+    try {
+      const importConfig = new KubeConfig();
+      importConfig.loadFromFile(filePath);
+
+      const results: ImportContextInfo[] = [];
+
+      for (const context of importConfig.contexts) {
+        // Check if context already exists in current kubeconfig
+        const existingContext = this.getContextFromConfig(this.#currentKubeConfig, context.name);
+        const hasConflict = existingContext !== undefined;
+
+        // Get server URL from cluster
+        const cluster = importConfig.clusters.find(c => c.name === context.cluster);
+        const server = cluster?.server;
+
+        results.push({
+          name: context.name,
+          cluster: context.cluster,
+          user: context.user,
+          namespace: context.namespace,
+          server,
+          hasConflict,
+        });
+      }
+
+      return results;
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error getting import contexts',
+        body: `Failed to parse kubeconfig file ${filePath}: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Import contexts from a kubeconfig file into the current kubeconfig
+   *
+   * @param filePath path to the kubeconfig file to import from
+   * @param selectedContexts array of context names to import
+   * @param conflictResolutions map of context names to conflict resolution strategies
+   */
+  async importContextsFromFile(
+    filePath: string,
+    selectedContexts: string[],
+    conflictResolutions: Record<string, 'keep-both' | 'replace'>,
+  ): Promise<void> {
+    try {
+      // Parse the source kubeconfig file
+      const tempConfig = new KubeConfig();
+      tempConfig.loadFromFile(filePath);
+      const newConfig = new KubeConfig();
+      newConfig.loadFromString(this.getKubeConfig().exportConfig());
+
+      // Process each selected context
+      for (const contextName of selectedContexts) {
+        this.processContextImport(newConfig, tempConfig, contextName, conflictResolutions);
+      }
+
+      await this.update(newConfig);
+      await this.saveKubeConfig();
+    } catch (error: unknown) {
+      window.showNotification({
+        title: 'Error importing contexts',
+        body: `Importing contexts from file ${filePath} failed: ${String(error)}`,
+        type: 'error',
+        highlight: true,
+      });
+    }
+  }
+
+  protected resolveNamingConflicts(
+    contextName: string,
+    sourceContext: Context,
+    existingContext: Context | undefined,
+    conflictResolution: 'keep-both' | 'replace' | undefined,
+  ): { finalContextName: string; finalClusterName: string; finalUserName: string } {
+    let finalContextName = contextName;
+    let finalClusterName = sourceContext.cluster;
+    let finalUserName = sourceContext.user;
+
+    if (existingContext) {
+      if (conflictResolution === 'replace') {
+        // Names will be replaced, so keep original names
+        finalContextName = contextName;
+        finalClusterName = sourceContext.cluster;
+        finalUserName = sourceContext.user;
+      } else if (conflictResolution === 'keep-both') {
+        // Generate unique context name only, keep original cluster and user names
+        finalContextName = this.findNewContextName(this.getKubeConfig(), contextName);
+        finalClusterName = sourceContext.cluster;
+        finalUserName = sourceContext.user;
+      }
+    }
+
+    return { finalContextName, finalClusterName, finalUserName };
+  }
+
+  protected addContextToKubeconfig(
+    newConfig: KubeConfig,
+    finalContextName: string,
+    finalClusterName: string,
+    finalUserName: string,
+    sourceContext: Context,
+  ): void {
+    newConfig.contexts.push({
+      name: finalContextName,
+      cluster: finalClusterName,
+      user: finalUserName,
+      namespace: sourceContext.namespace,
+    });
+  }
+
+  protected processContextImport(
+    newConfig: KubeConfig,
+    tempConfig: KubeConfig,
+    contextName: string,
+    conflictResolutions: Record<string, 'keep-both' | 'replace'>,
+  ): void {
+    const sourceContext = this.getContextFromConfig(tempConfig, contextName);
+    if (!sourceContext) {
+      return;
+    }
+
+    const sourceCluster = this.getClusterFromConfig(tempConfig, contextName);
+    const sourceUser = this.getUserFromConfig(tempConfig, contextName);
+
+    if (!sourceCluster || !sourceUser) {
+      window.showNotification({
+        title: 'Error importing contexts',
+        body: `Missing cluster or user information for context ${contextName}`,
+        type: 'error',
+        highlight: true,
+      });
+      return;
+    }
+
+    const conflictResolution = conflictResolutions[contextName];
+    const existingContext = newConfig.contexts.find(ctx => ctx.name === contextName);
+
+    const { finalContextName, finalClusterName, finalUserName } = this.resolveNamingConflicts(
+      contextName,
+      sourceContext,
+      existingContext,
+      conflictResolution,
+    );
+
+    if (conflictResolution === 'replace' && existingContext) {
+      newConfig.contexts = newConfig.contexts.filter(ctx => ctx.name !== contextName);
+      newConfig.clusters = newConfig.clusters.filter(c => c.name !== existingContext.cluster);
+      newConfig.users = newConfig.users.filter(u => u.name !== existingContext.user);
+    }
+
+    this.addContextToKubeconfig(newConfig, finalContextName, finalClusterName, finalUserName, sourceContext);
+
+    const existingCluster = newConfig.clusters.find(c => c.name === finalClusterName);
+    if (!existingCluster) {
+      newConfig.clusters.push({
+        ...sourceCluster,
+        name: finalClusterName,
+      });
+    }
+
+    const existingUser = newConfig.users.find(u => u.name === finalUserName);
+    if (!existingUser) {
+      newConfig.users.push({
+        ...sourceUser,
+        name: finalUserName,
+      });
+    }
+  }
+
+  protected loadImportingKubeconfig(filePath: string): KubeConfig {
+    const importingConfig = new KubeConfig();
+    importingConfig.loadFromFile(filePath);
+    return importingConfig;
+  }
+
+  protected getContextFromConfig(config: KubeConfig, contextName: string): Context | undefined {
+    return config.contexts.find(ctx => ctx.name === contextName);
+  }
+
+  protected getClusterFromConfig(config: KubeConfig, contextName: string): Cluster | undefined {
+    const context = this.getContextFromConfig(config, contextName);
+    if (!context) {
+      return undefined;
+    }
+    return config.clusters.find(c => c.name === context.cluster);
+  }
+
+  protected getUserFromConfig(config: KubeConfig, contextName: string): User | undefined {
+    const context = this.getContextFromConfig(config, contextName);
+    if (!context) {
+      return undefined;
+    }
+    return config.users.find(u => u.name === context.user);
   }
 }
