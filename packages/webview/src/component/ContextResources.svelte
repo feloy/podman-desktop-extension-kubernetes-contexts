@@ -1,8 +1,8 @@
 <script lang="ts">
 import type { ContextPermission, ResourceCount } from '@podman-desktop/kubernetes-dashboard-extension-api';
 import { Tooltip } from '@podman-desktop/ui-svelte';
-import Fa from 'svelte-fa';
 import { faQuestionCircle } from '@fortawesome/free-regular-svg-icons';
+import { Icon } from '@podman-desktop/ui-svelte/icons';
 
 interface Props {
   resourcesCount?: ResourceCount[];
@@ -61,6 +61,6 @@ function getNotPermittedHelp(podsPermitted: boolean, deploymentsPermitted: boole
   </div>
   {#if !permitted('pods') || !permitted('deployments')}
     <Tooltip tip={getNotPermittedHelp(permitted('pods'), permitted('deployments'))}
-      ><div><Fa size="1x" icon={faQuestionCircle} /></div></Tooltip>
+      ><div><Icon icon={faQuestionCircle} /></div></Tooltip>
   {/if}
 </div>
