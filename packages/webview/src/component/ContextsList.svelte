@@ -10,9 +10,12 @@ import type { Unsubscriber } from 'svelte/store';
 import ImportModal from '/@/component/ImportModal.svelte';
 import { faFileImport } from '@fortawesome/free-solid-svg-icons';
 
+const DISPLAYED_RESOURCES = ['deployments', 'pods'];
 const states = getContext<States>(States);
 const availableContexts = states.stateAvailableContextsInfoUI;
 const contextsHealths = states.stateContextsHealthsInfoUI;
+const contextsPermissions = states.stateContextsPermissionsInfoUI;
+const resourcesCount = states.stateResourcesCountInfoUI;
 
 let contextToEdit = $state<Context>();
 let subscribers: Unsubscriber[] = [];
@@ -21,6 +24,8 @@ let importModalVisible = $state(false);
 onMount(() => {
   subscribers.push(availableContexts.subscribe());
   subscribers.push(contextsHealths.subscribe());
+  subscribers.push(contextsPermissions.subscribe());
+  subscribers.push(resourcesCount.subscribe());
 });
 
 onDestroy(() => {
@@ -62,6 +67,13 @@ function openImportModal(): void {
               {#if cluster && user}
                 <ContextCard
                   health={contextsHealths.data?.healths.find(health => health.contextName === context.name)}
+                  resourcesCount={resourcesCount.data?.counts.filter(
+                    count => count.contextName === context.name && DISPLAYED_RESOURCES.includes(count.resourceName),
+                  )}
+                  contextsPermissions={contextsPermissions.data?.permissions.filter(
+                    permission =>
+                      permission.contextName === context.name && DISPLAYED_RESOURCES.includes(permission.resourceName),
+                  )}
                   cluster={cluster}
                   user={user}
                   name={context.name}
