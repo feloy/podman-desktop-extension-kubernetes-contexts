@@ -1,5 +1,5 @@
 /**********************************************************************
- * Copyright (C) 2025 Red Hat, Inc.
+ * Copyright (C) 2025 - 2026 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,9 @@ export class DashboardStatesManager implements Disposable {
 
   init(): void {
     const didChangeSubscription = extensions.onDidChange(() => {
-      const api = extensions.getExtension<KubernetesDashboardExtensionApi>('redhat.kubernetes-dashboard')?.exports;
+      const api = extensions.getExtension<KubernetesDashboardExtensionApi>(
+        'podman-desktop.kubernetes-dashboard',
+      )?.exports;
       if (api) {
         this.#subscriber = api.getSubscriber();
         // dispose the subscriber when the extension is deactivated

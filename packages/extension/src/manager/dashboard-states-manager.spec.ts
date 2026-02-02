@@ -1,5 +1,5 @@
 /**********************************************************************
- * Copyright (C) 2025 Red Hat, Inc.
+ * Copyright (C) 2025 - 2026 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ describe('dashboard extension is installed', () => {
         onContextsPermissions: onContextsPermissions,
         dispose: disposeSubscriber,
       } as unknown as KubernetesDashboardSubscriber);
-      if (id === 'redhat.kubernetes-dashboard') {
+      if (id === 'podman-desktop.kubernetes-dashboard') {
         return {
           exports: {
             getSubscriber: subscriber,
