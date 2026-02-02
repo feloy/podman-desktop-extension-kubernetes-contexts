@@ -4,7 +4,7 @@
   "description": "Podman Desktop extension allowing to manage Kubernetes contexts",
   "version": "0.1.0-next",
   "icon": "icon.png",
-  "publisher": "redhat",
+  "publisher": "podman-desktop",
   "license": "Apache-2.0",
   "engines": {
     "podman-desktop": ">=1.18.0"
