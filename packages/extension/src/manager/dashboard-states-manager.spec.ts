@@ -18,7 +18,8 @@
 
 import { afterEach, assert, beforeEach, describe, expect, test, vi } from 'vitest';
 import { DashboardStatesManager } from './dashboard-states-manager';
-import { type Disposable, type Extension, extensions } from '@podman-desktop/api';
+import type { Disposable, ExtensionContext, TelemetryLogger } from '@podman-desktop/api';
+import { extensions } from '@podman-desktop/api';
 import {
   type ResourcesCountInfo,
   type ContextsHealthsInfo,
@@ -26,9 +27,23 @@ import {
   type KubernetesDashboardSubscriber,
   type ContextsPermissionsInfo,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import { InversifyBinding } from '/@/inject/inversify-binding';
+import type { RpcExtension } from '@kubernetes-contexts/rpc';
+import type { Container } from 'inversify';
+import { DashboardApiManager } from '/@/manager/dashboard-api-manager';
 
-beforeEach(() => {
+let container: Container;
+
+const dashboardApiManagerMock: DashboardApiManager = {
+  getApi: vi.fn(),
+} as unknown as DashboardApiManager;
+
+beforeEach(async () => {
   vi.resetAllMocks();
+
+  const inversifyBinding = new InversifyBinding({} as RpcExtension, {} as ExtensionContext, {} as TelemetryLogger);
+  container = await inversifyBinding.initBindings();
+  (await container.rebind(DashboardApiManager)).toConstantValue(dashboardApiManagerMock);
 });
 
 describe('dashboard extension is not installed', () => {
@@ -39,6 +54,7 @@ describe('dashboard extension is not installed', () => {
     vi.mocked(extensions.onDidChange).mockReturnValue({
       dispose: onDidChangeDisposable,
     } as unknown as Disposable);
+    vi.mocked(dashboardApiManagerMock.getApi).mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -46,13 +62,13 @@ describe('dashboard extension is not installed', () => {
   });
 
   test('subscriber is undefined', () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     expect(manager.getSubscriber()).toBeUndefined();
   });
 
   test('onDidChangeDisposable is called', () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     manager.dispose();
     expect(onDidChangeDisposable).toHaveBeenCalled();
@@ -77,22 +93,15 @@ describe('dashboard extension is installed', () => {
         dispose: onDidChangeDisposable,
       } as unknown as Disposable;
     });
-    vi.mocked(extensions.getExtension).mockImplementation(id => {
-      vi.mocked(subscriber).mockReturnValue({
-        onContextsHealth: onContextsHealth,
-        onResourcesCount: onResourcesCount,
-        onContextsPermissions: onContextsPermissions,
-        dispose: disposeSubscriber,
-      } as unknown as KubernetesDashboardSubscriber);
-      if (id === 'podman-desktop.kubernetes-dashboard') {
-        return {
-          exports: {
-            getSubscriber: subscriber,
-          },
-        } as unknown as Extension<KubernetesDashboardExtensionApi>;
-      }
-      return undefined;
-    });
+    vi.mocked(subscriber).mockReturnValue({
+      onContextsHealth: onContextsHealth,
+      onResourcesCount: onResourcesCount,
+      onContextsPermissions: onContextsPermissions,
+      dispose: disposeSubscriber,
+    } as unknown as KubernetesDashboardSubscriber);
+    vi.mocked(dashboardApiManagerMock.getApi).mockReturnValue({
+      getSubscriber: subscriber,
+    } as unknown as KubernetesDashboardExtensionApi);
   });
 
   afterEach(() => {
@@ -100,7 +109,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('subscriber is eventually defined', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     await vi.waitFor(() => {
       expect(manager.getSubscriber()).toBeDefined();
@@ -108,7 +117,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('onContextsHealth is eventually called on subscriber', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     await vi.waitFor(() => {
       expect(onContextsHealth).toHaveBeenCalled();
@@ -116,7 +125,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('onResourcesCount is eventually called on subscriber', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     await vi.waitFor(() => {
       expect(onResourcesCount).toHaveBeenCalled();
@@ -124,7 +133,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('onContextsPermissions is eventually called on subscriber', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     await vi.waitFor(() => {
       expect(onContextsPermissions).toHaveBeenCalled();
@@ -132,7 +141,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when contextsHealth callback is called, onContextsHealthChange is fired', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onContextsHealthChangeCallback: () => void = vi.fn();
     manager.onContextsHealthChange(onContextsHealthChangeCallback);
 
@@ -158,7 +167,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when resourcesCount callback is called, onResourcesCountChange is fired', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onResourcesCountChangeCallback: () => void = vi.fn();
     manager.onResourcesCountChange(onResourcesCountChangeCallback);
 
@@ -183,7 +192,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when contextsPermissions callback is called, onContextsPermissionsChange is fired', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onContextsPermissionsChangeCallback: () => void = vi.fn();
     manager.onContextsPermissionsChange(onContextsPermissionsChangeCallback);
 
@@ -208,7 +217,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when contextsHealth callback is called, getContextsHealths returns the correct value', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onContextsHealthChangeCallback: () => void = vi.fn();
     manager.onContextsHealthChange(onContextsHealthChangeCallback);
 
@@ -235,7 +244,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when resourcesCount callback is called, getResourcesCount returns the correct value', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onResourcesCountChangeCallback: () => void = vi.fn();
     manager.onResourcesCountChange(onResourcesCountChangeCallback);
 
@@ -261,7 +270,7 @@ describe('dashboard extension is installed', () => {
   });
 
   test('when contextsPermissions callback is called, getContextsPermissions returns the correct value', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     const onContextsPermissionsChangeCallback: () => void = vi.fn();
     manager.onContextsPermissionsChange(onContextsPermissionsChangeCallback);
 
@@ -287,14 +296,14 @@ describe('dashboard extension is installed', () => {
   });
 
   test('onDidChangeDisposable is called', () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     manager.dispose();
     expect(onDidChangeDisposable).toHaveBeenCalled();
   });
 
   test('subscriber is disposed on dispose', async () => {
-    manager = new DashboardStatesManager();
+    manager = container.get(DashboardStatesManager);
     manager.init();
     await vi.waitFor(() => {
       expect(manager.getSubscriber()).toBeDefined();

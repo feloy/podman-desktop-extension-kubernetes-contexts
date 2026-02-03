@@ -20,12 +20,12 @@ import { Disposable, extensions } from '@podman-desktop/api';
 import {
   ContextsHealthsInfo,
   ResourcesCountInfo,
-  KubernetesDashboardExtensionApi,
   KubernetesDashboardSubscriber,
   ContextsPermissionsInfo,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
+import { DashboardApiManager } from '/@/manager/dashboard-api-manager';
 
 @injectable()
 export class DashboardStatesManager implements Disposable {
@@ -45,11 +45,12 @@ export class DashboardStatesManager implements Disposable {
   #resourcesCount: ResourcesCountInfo = { counts: [] };
   #contextsPermissions: ContextsPermissionsInfo = { permissions: [] };
 
+  @inject(DashboardApiManager)
+  protected dashboardApiManager: DashboardApiManager;
+
   init(): void {
     const didChangeSubscription = extensions.onDidChange(() => {
-      const api = extensions.getExtension<KubernetesDashboardExtensionApi>(
-        'podman-desktop.kubernetes-dashboard',
-      )?.exports;
+      const api = this.dashboardApiManager.getApi();
       if (api) {
         this.#subscriber = api.getSubscriber();
         // dispose the subscriber when the extension is deactivated
