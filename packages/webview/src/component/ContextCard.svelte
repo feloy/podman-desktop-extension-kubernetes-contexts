@@ -63,7 +63,11 @@ const {
     <div class="flex flex-row">
       <div class="flex-none w-40">
         <div class="flex flex-col space-y-2">
-          <ContextStatus health={health} resourcesCount={resourcesCount} contextsPermissions={contextsPermissions} />
+          <ContextStatus
+            health={health}
+            contextName={name}
+            resourcesCount={resourcesCount}
+            contextsPermissions={contextsPermissions} />
         </div>
       </div>
       <div class="grow text-sm">

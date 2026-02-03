@@ -26,6 +26,19 @@ exports[`'offline state' > offline state 1`] = `
     <!---->
   </div>
    
+  <div>
+    <button
+      aria-label="Connect to context ctx-1"
+      class="relative px-4 py-[5px] box-border whitespace-nowrap select-none transition-all outline-transparent focus:outline-[var(--pd-button-primary-hover-bg)] bg-[var(--pd-button-primary-bg)] text-[var(--pd-button-text)] border-none hover:bg-[var(--pd-button-primary-hover-bg)] rounded-[4px] "
+      type="button"
+    >
+      <!---->
+      Connect
+      
+      <!---->
+    </button>
+    <!---->
+  </div>
   <!---->
   
   
@@ -52,6 +65,19 @@ exports[`'unknown state' > unknown state 1`] = `
     <!---->
   </div>
    
+  <div>
+    <button
+      aria-label="Connect to context ctx-1"
+      class="relative px-4 py-[5px] box-border whitespace-nowrap select-none transition-all outline-transparent focus:outline-[var(--pd-button-primary-hover-bg)] bg-[var(--pd-button-primary-bg)] text-[var(--pd-button-text)] border-none hover:bg-[var(--pd-button-primary-hover-bg)] rounded-[4px] "
+      type="button"
+    >
+      <!---->
+      Connect
+      
+      <!---->
+    </button>
+    <!---->
+  </div>
   <!---->
   
   
@@ -82,6 +108,19 @@ exports[`'unreachable state' > unreachable state 1`] = `
     <!---->
   </div>
    
+  <div>
+    <button
+      aria-label="Connect to context ctx-1"
+      class="relative px-4 py-[5px] box-border whitespace-nowrap select-none transition-all outline-transparent focus:outline-[var(--pd-button-primary-hover-bg)] bg-[var(--pd-button-primary-bg)] text-[var(--pd-button-text)] border-none hover:bg-[var(--pd-button-primary-hover-bg)] rounded-[4px] "
+      type="button"
+    >
+      <!---->
+      Connect
+      
+      <!---->
+    </button>
+    <!---->
+  </div>
   <!---->
   
   
