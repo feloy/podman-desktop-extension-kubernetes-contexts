@@ -22,11 +22,20 @@ import ContextStatus from '/@/component/ContextStatus.svelte';
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import type { ContextHealth } from '@podman-desktop/kubernetes-dashboard-extension-api';
 import ContextResources from '/@/component/ContextResources.svelte';
+import { RemoteMocks } from '/@/tests/remote-mocks';
+import { API_CONTEXTS, type ContextsApi } from '@kubernetes-contexts/channels';
 
 vi.mock(import('/@/component/ContextResources.svelte'));
 
+const remoteMocks = new RemoteMocks();
+
 beforeEach(() => {
   vi.resetAllMocks();
+
+  remoteMocks.reset();
+  remoteMocks.mock(API_CONTEXTS, {
+    connectToContext: vi.fn(),
+  } as unknown as ContextsApi);
 });
 
 interface TestCase {
@@ -62,6 +71,7 @@ test.each<TestCase>([
 ])('$name', ({ health, expectedAriaLabel, expectedDisplayedText, expectedClass, name }) => {
   const { container, getByText } = render(ContextStatus, {
     props: {
+      contextName: 'ctx-1',
       health,
     },
   });
@@ -76,6 +86,7 @@ test.each<TestCase>([
 test('a tooltip should be rendered when the error message is defined and the tooltip is hovered', async () => {
   const { container, getByText } = render(ContextStatus, {
     props: {
+      contextName: 'ctx-1',
       health: {
         contextName: 'ctx-1',
         checking: false,
@@ -97,6 +108,7 @@ test('a tooltip should be rendered when the error message is defined and the too
 test('ContextResources should be rendered when reachable state', () => {
   const { container, getByText } = render(ContextStatus, {
     props: {
+      contextName: 'ctx-1',
       health: {
         contextName: 'ctx-1',
         checking: false,
@@ -156,6 +168,7 @@ test('ContextResources should be rendered when reachable state', () => {
 test('ContextResources should not be rendered when unreachable state', () => {
   render(ContextStatus, {
     props: {
+      contextName: 'ctx-1',
       health: {
         contextName: 'ctx-1',
         checking: false,
@@ -185,4 +198,78 @@ test('ContextResources should not be rendered when unreachable state', () => {
   });
 
   expect(ContextResources).not.toHaveBeenCalled();
+});
+
+test('Connect button should not be rendered when reachable state', () => {
+  const { queryByLabelText } = render(ContextStatus, {
+    props: {
+      contextName: 'ctx-1',
+      health: {
+        contextName: 'ctx-1',
+        checking: false,
+        reachable: true,
+        offline: false,
+      },
+      resourcesCount: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+      ],
+      contextsPermissions: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    },
+  });
+
+  expect(queryByLabelText('Connect to context ctx-1')).not.toBeInTheDocument();
+});
+
+test('Connect button should be rendered when unreachable state', async () => {
+  const { getByLabelText, queryByLabelText } = render(ContextStatus, {
+    props: {
+      contextName: 'ctx-1',
+      health: {
+        contextName: 'ctx-1',
+        checking: false,
+        reachable: false,
+        offline: false,
+      },
+      resourcesCount: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          count: 1,
+        },
+      ],
+      contextsPermissions: [
+        {
+          contextName: 'ctx-1',
+          resourceName: 'pods',
+          permitted: true,
+        },
+        {
+          contextName: 'ctx-1',
+          resourceName: 'deployments',
+          permitted: false,
+        },
+      ],
+    },
+  });
+
+  expect(queryByLabelText('Connect to context ctx-1')).toBeInTheDocument();
+  await fireEvent.click(getByLabelText('Connect to context ctx-1'));
+  expect(remoteMocks.get(API_CONTEXTS).connectToContext).toHaveBeenCalledWith('ctx-1', {
+    resources: ['pods', 'deployments'],
+  });
 });

@@ -21,6 +21,10 @@ import type { ImportContextInfo } from '/@/model/import-context-info';
 
 export const ContextsApi = Symbol.for('ContextsApi');
 
+export interface ConnectOptions {
+  resources?: string[];
+}
+
 export interface ContextsApi {
   setCurrentContext(contextName: string): Promise<void>;
   deleteContext(contextName: string): Promise<void>;
@@ -32,4 +36,5 @@ export interface ContextsApi {
     selectedContexts: string[],
     conflictResolutions: Record<string, 'keep-both' | 'replace'>,
   ): Promise<void>;
+  connectToContext(contextName: string, options?: ConnectOptions): Promise<void>;
 }

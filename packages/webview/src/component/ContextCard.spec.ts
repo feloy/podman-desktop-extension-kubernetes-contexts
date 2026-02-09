@@ -118,6 +118,7 @@ test('ContextStatus should render with health', () => {
     },
   });
   expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    contextName: 'Test Context',
     health: {
       contextName: 'ctx-1',
       checking: false,
@@ -158,6 +159,7 @@ test('ContextStatus should render with permissions', () => {
     },
   });
   expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    contextName: 'Test Context',
     contextsPermissions: [
       {
         contextName: 'ctx-1',
@@ -204,6 +206,7 @@ test('ContextStatus should render with resources count', () => {
     },
   });
   expect(ContextStatus).toHaveBeenCalledWith(expect.anything(), {
+    contextName: 'Test Context',
     resourcesCount: [
       {
         contextName: 'ctx-1',

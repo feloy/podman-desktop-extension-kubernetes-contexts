@@ -4,22 +4,33 @@ import type {
   ContextPermission,
   ResourceCount,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
-import { Tooltip } from '@podman-desktop/ui-svelte';
+import { Button, Tooltip } from '@podman-desktop/ui-svelte';
 import ContextResources from '/@/component/ContextResources.svelte';
+import { getContext } from 'svelte';
+import { Remote } from '/@/remote/remote';
+import { API_CONTEXTS } from '@kubernetes-contexts/channels';
 
 interface Props {
+  contextName: string;
   health?: ContextHealth;
   resourcesCount?: ResourceCount[];
   contextsPermissions?: ContextPermission[];
 }
 
-const { health, resourcesCount, contextsPermissions }: Props = $props();
+const { contextName, health, resourcesCount, contextsPermissions }: Props = $props();
+
+const remote = getContext<Remote>(Remote);
+const contextsApi = remote.getProxy(API_CONTEXTS);
 
 let errorState = $derived(health?.errorMessage);
 let unknownState = $derived(!health);
 let reachableState = $derived(health?.reachable && !health?.offline);
 let unreachableState = $derived(!health?.reachable && !health?.offline);
 let offlineState = $derived(health?.offline);
+
+async function connectToContext(): Promise<void> {
+  await contextsApi.connectToContext(contextName, { resources: ['pods', 'deployments'] });
+}
 </script>
 
 <div class="flex flex-row pt-2">
@@ -55,4 +66,8 @@ let offlineState = $derived(health?.offline);
 </div>
 {#if reachableState}
   <ContextResources resourcesCount={resourcesCount} contextsPermissions={contextsPermissions} />
+{:else}
+  <div>
+    <Button aria-label="Connect to context {contextName}" type="primary" onclick={connectToContext}>Connect</Button>
+  </div>
 {/if}

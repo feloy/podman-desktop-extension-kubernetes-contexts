@@ -19,12 +19,28 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { ContextsManager } from '/@/manager/contexts-manager';
 import { KubeConfig } from '@kubernetes/client-node';
-import { kubernetes, type Uri, window } from '@podman-desktop/api';
+import type { ExtensionContext, TelemetryLogger, Uri } from '@podman-desktop/api';
+import { kubernetes, window } from '@podman-desktop/api';
 import { vol } from 'memfs';
+import { InversifyBinding } from '/@/inject/inversify-binding';
+import type { RpcExtension } from '@kubernetes-contexts/rpc';
+import { DashboardApiManager } from '/@/manager/dashboard-api-manager';
+import type { Container } from 'inversify';
+import type { KubernetesDashboardExtensionApi } from '@podman-desktop/kubernetes-dashboard-extension-api';
 
-beforeEach(() => {
+const dashboardApiManagerMock: DashboardApiManager = {
+  getApi: vi.fn(),
+} as unknown as DashboardApiManager;
+
+let container: Container;
+
+beforeEach(async () => {
   vi.resetAllMocks();
   vol.reset();
+
+  const inversifyBinding = new InversifyBinding({} as RpcExtension, {} as ExtensionContext, {} as TelemetryLogger);
+  container = await inversifyBinding.initBindings();
+  (await container.rebind(DashboardApiManager)).toConstantValue(dashboardApiManagerMock);
 });
 
 vi.mock(import('node:fs/promises'));
@@ -1242,4 +1258,42 @@ describe('findNewContextName', () => {
     const newName = contextsManager.findNewContextName(kubeConfig, 'test');
     expect(newName).toBe('test-1');
   });
+});
+
+test('connectToContext sends notification if dashboard api is not accessible', async () => {
+  const contextsManager = container.get(ContextsManager);
+  const kubeConfig = new KubeConfig();
+  kubeConfig.loadFromString(`
+    clusters:
+      - name: cluster1
+        cluster:
+          server: https://cluster1.example.com
+  `);
+  vi.mocked(dashboardApiManagerMock.getApi).mockReturnValue(undefined);
+  await contextsManager.connectToContext('context1');
+  expect(window.showNotification).toHaveBeenCalledWith({
+    title: 'Error connecting to context',
+    body: 'You need to install the Kubernetes Dashboard extension',
+    type: 'error',
+    highlight: true,
+  });
+});
+
+test('connectToContext calls api.contexts.connect if dashboard api is accessible', async () => {
+  const contextsManager = container.get(ContextsManager);
+  const kubeConfig = new KubeConfig();
+  kubeConfig.loadFromString(`
+    clusters:
+      - name: cluster1
+        cluster:
+          server: https://cluster1.example.com
+  `);
+  const apiMock = {
+    contexts: {
+      connect: vi.fn(),
+    },
+  } as unknown as KubernetesDashboardExtensionApi;
+  vi.mocked(dashboardApiManagerMock.getApi).mockReturnValue(apiMock);
+  await contextsManager.connectToContext('context1', { resources: ['seals', 'dolphins'] });
+  expect(apiMock.contexts.connect).toHaveBeenCalledWith('context1', { resources: ['seals', 'dolphins'] });
 });

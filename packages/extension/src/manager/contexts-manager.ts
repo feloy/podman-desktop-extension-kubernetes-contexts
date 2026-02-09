@@ -16,14 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 
-import { ContextsApi, ImportContextInfo } from '@kubernetes-contexts/channels';
-import { injectable } from 'inversify';
+import { ConnectOptions, ContextsApi, ImportContextInfo } from '@kubernetes-contexts/channels';
+import { inject, injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
 import { Cluster, Context, KubeConfig, User } from '@kubernetes/client-node';
 import { kubernetes, window } from '@podman-desktop/api';
 import { writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as jsYaml from 'js-yaml';
+import { DashboardApiManager } from '/@/manager/dashboard-api-manager';
 
 @injectable()
 export class ContextsManager implements ContextsApi {
@@ -31,6 +32,9 @@ export class ContextsManager implements ContextsApi {
   onContextsChange: Event<void> = this.#onContextsChange.event;
 
   #currentKubeConfig: KubeConfig;
+
+  @inject(DashboardApiManager)
+  protected dashboardApiManager: DashboardApiManager;
 
   constructor() {
     // start with an empty kubeconfig
@@ -430,5 +434,19 @@ export class ContextsManager implements ContextsApi {
       return undefined;
     }
     return config.users.find(u => u.name === context.user);
+  }
+
+  async connectToContext(contextName: string, options?: ConnectOptions): Promise<void> {
+    const api = this.dashboardApiManager.getApi();
+    if (!api) {
+      window.showNotification({
+        title: 'Error connecting to context',
+        body: `You need to install the Kubernetes Dashboard extension`,
+        type: 'error',
+        highlight: true,
+      });
+      return;
+    }
+    await api.contexts.connect(contextName, options);
   }
 }
