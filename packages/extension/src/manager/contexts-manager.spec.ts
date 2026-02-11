@@ -32,13 +32,17 @@ const dashboardApiManagerMock: DashboardApiManager = {
   getApi: vi.fn(),
 } as unknown as DashboardApiManager;
 
+const telemetryLoggerMock: TelemetryLogger = {
+  logUsage: vi.fn(),
+} as unknown as TelemetryLogger;
+
 let container: Container;
 
 beforeEach(async () => {
   vi.resetAllMocks();
   vol.reset();
 
-  const inversifyBinding = new InversifyBinding({} as RpcExtension, {} as ExtensionContext, {} as TelemetryLogger);
+  const inversifyBinding = new InversifyBinding({} as RpcExtension, {} as ExtensionContext, telemetryLoggerMock);
   container = await inversifyBinding.initBindings();
   (await container.rebind(DashboardApiManager)).toConstantValue(dashboardApiManagerMock);
 });
@@ -47,12 +51,12 @@ vi.mock(import('node:fs/promises'));
 vi.mock(import('node:fs'));
 
 test('default KubeConfig should be empty', () => {
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   expect(contextsManager.getKubeConfig()).toEqual(new KubeConfig());
 });
 
 test('update should set the KubeConfig', async () => {
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   kubeConfig.loadFromString(`
     clusters:
@@ -72,7 +76,7 @@ test('update should set the KubeConfig', async () => {
 });
 
 test('update triggers onContextsChange', async () => {
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   kubeConfig.loadFromString(`
     clusters:
@@ -96,7 +100,7 @@ test('update triggers onContextsChange', async () => {
 });
 
 test('setCurrentContext should show error notification if it fails', async () => {
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   kubeConfig.loadFromString(`
     clusters:
@@ -114,6 +118,7 @@ test('setCurrentContext should show error notification if it fails', async () =>
     type: 'error',
     highlight: true,
   });
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('setCurrentContext');
 });
 
 test('setCurrentContext rewrites file with new current context', async () => {
@@ -124,7 +129,7 @@ test('setCurrentContext rewrites file with new current context', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
       clusters: [
@@ -160,11 +165,12 @@ test('setCurrentContext rewrites file with new current context', async () => {
   const kubeconfigFileNew = new KubeConfig();
   kubeconfigFileNew.loadFromString(kubeconfigFile ?? '');
   expect(kubeconfigFileNew.getCurrentContext()).toEqual('context1');
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('setCurrentContext');
 });
 
 describe('removeContext', () => {
   test('the context and its references are removed from the KubeConfig', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       contexts:
@@ -206,10 +212,11 @@ describe('removeContext', () => {
     expect(newKubeConfig.getUsers().length).toEqual(1);
     expect(newKubeConfig.getUsers()[0].name).toEqual('user2');
     expect(newKubeConfig.getCurrentContext()).toEqual('');
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
   });
 
   test('the current context is not changed if it is not the context to remove', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       contexts:
@@ -251,10 +258,11 @@ describe('removeContext', () => {
     expect(newKubeConfig.getUsers().length).toEqual(1);
     expect(newKubeConfig.getUsers()[0].name).toEqual('user2');
     expect(newKubeConfig.getCurrentContext()).toEqual('context2');
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
   });
 
   test('unrelated references are not removed from the KubeConfig', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       contexts:
@@ -305,10 +313,11 @@ describe('removeContext', () => {
     expect(newKubeConfig.getUsers().length).toEqual(2);
     expect(newKubeConfig.getUsers()[0].name).toEqual('user2');
     expect(newKubeConfig.getUsers()[1].name).toEqual('user3');
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
   });
 
   test('same KubeConfig is returned if context to remove is not found', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       contexts:
@@ -341,11 +350,12 @@ describe('removeContext', () => {
     ]);
     expect(newKubeConfig.getUsers().length).toEqual(1);
     expect(newKubeConfig.getUsers()[0].name).toEqual('user1');
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
   });
 });
 
 test('deleteContext should show error notification if it fails', async () => {
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   kubeConfig.loadFromString(`
     clusters:
@@ -363,6 +373,7 @@ test('deleteContext should show error notification if it fails', async () => {
     type: 'error',
     highlight: true,
   });
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
 });
 
 test('deleteContext rewrites file with new current context, no confirmation needed for non current context', async () => {
@@ -373,7 +384,7 @@ test('deleteContext rewrites file with new current context, no confirmation need
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
       clusters: [
@@ -442,6 +453,7 @@ test('deleteContext rewrites file with new current context, no confirmation need
   kubeconfigFileNew.loadFromString(kubeconfigFile ?? '');
   expect(kubeconfigFileNew.getContexts()).toHaveLength(2);
   expect(window.showInformationMessage).not.toHaveBeenCalled();
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
 });
 
 test('deleteContext the current context asks for confirmation', async () => {
@@ -452,7 +464,7 @@ test('deleteContext the current context asks for confirmation', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -526,6 +538,7 @@ test('deleteContext the current context asks for confirmation', async () => {
   kubeconfigFileNew.loadFromString(kubeconfigFile ?? '');
   expect(kubeconfigFileNew.getContexts()).toHaveLength(2);
   expect(window.showInformationMessage).toHaveBeenCalled();
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('deleteContext');
 });
 
 test('deleteContext the current context asks for confirmation, and do nothing if refused', async () => {
@@ -536,7 +549,7 @@ test('deleteContext the current context asks for confirmation, and do nothing if
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -617,7 +630,7 @@ test('should duplicate context from config', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -659,6 +672,7 @@ test('should duplicate context from config', async () => {
   contexts = contextsManager.getKubeConfig().getContexts();
   expect(contexts.length).toBe(3);
   expect(contexts[2].name).toBe('context1-2');
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('duplicateContext');
 });
 
 test('should update context from config', async () => {
@@ -669,7 +683,7 @@ test('should update context from config', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -712,6 +726,7 @@ test('should update context from config', async () => {
 
   expect(contexts[0].name).toBe('context1-edited');
   expect(contexts[0].namespace).toBe('namespace-edited');
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('editContext');
 });
 
 test('should remove the namespace when updating context from config', async () => {
@@ -722,7 +737,7 @@ test('should remove the namespace when updating context from config', async () =
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -765,6 +780,7 @@ test('should remove the namespace when updating context from config', async () =
   });
   const contexts2 = contextsManager.getKubeConfig().getContexts();
   expect(contexts2[0].namespace).toBeUndefined();
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('editContext');
 });
 
 test('should update the cluster updating context from config', async () => {
@@ -775,7 +791,7 @@ test('should update the cluster updating context from config', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -824,6 +840,7 @@ test('should update the cluster updating context from config', async () => {
   });
   const contexts2 = contextsManager.getKubeConfig().getContexts();
   expect(contexts2[0].cluster).toBe('cluster2');
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('editContext');
 });
 
 test('should update the user updating context from config', async () => {
@@ -834,7 +851,7 @@ test('should update the user updating context from config', async () => {
   vi.mocked(kubernetes.getKubeconfig).mockReturnValue({
     path: kubeConfigPath,
   } as Uri);
-  const contextsManager = new ContextsManager();
+  const contextsManager = container.get(ContextsManager);
   const kubeConfig = new KubeConfig();
   const kubeconfigFileContent = `{
     clusters: [
@@ -880,6 +897,7 @@ test('should update the user updating context from config', async () => {
   });
   const contexts2 = contextsManager.getKubeConfig().getContexts();
   expect(contexts2[0].user).toBe('user2');
+  expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('editContext');
 });
 
 describe('getImportContexts', () => {
@@ -908,7 +926,7 @@ describe('getImportContexts', () => {
       }
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const result = await contextsManager.getImportContexts(kubeConfigPath);
 
     expect(result).toHaveLength(1);
@@ -921,7 +939,7 @@ describe('getImportContexts', () => {
   });
 
   test('should return empty array if file does not exist', async () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
 
     const result = await contextsManager.getImportContexts('/nonexistent/file');
     expect(result).toEqual([]);
@@ -942,7 +960,7 @@ describe('getImportContexts', () => {
       throw new Error('Invalid YAML');
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
 
     const result = await contextsManager.getImportContexts(kubeConfigPath);
     expect(result).toEqual([]);
@@ -986,7 +1004,7 @@ describe('getImportContexts', () => {
       }
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const result = await contextsManager.getImportContexts(kubeConfigPath);
 
     expect(result).toHaveLength(2);
@@ -1001,7 +1019,7 @@ describe('getImportContexts', () => {
     vol.fromJSON({ [kubeConfigPath]: '' });
 
     // First set up the current config with an existing context
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const currentConfig = new KubeConfig();
     currentConfig.loadFromString(`
       clusters:
@@ -1088,7 +1106,7 @@ describe('importContextsFromFile', () => {
         `);
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       clusters:
@@ -1112,6 +1130,7 @@ describe('importContextsFromFile', () => {
 
     expect(contextsManager.getKubeConfig().contexts).toHaveLength(2);
     expect(contextsManager.getKubeConfig().contexts.find(c => c.name === 'new-context')).toBeDefined();
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('importContexts');
   });
 
   test('should replace existing context with replace resolution', async () => {
@@ -1133,7 +1152,7 @@ describe('importContextsFromFile', () => {
         `);
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       clusters:
@@ -1159,6 +1178,7 @@ describe('importContextsFromFile', () => {
     expect(contexts).toHaveLength(1);
     expect(contexts[0].name).toBe('test-context');
     expect(contexts[0].cluster).toBe('new-cluster');
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('importContexts');
   });
 
   test('should keep both contexts with keep-both resolution', async () => {
@@ -1180,7 +1200,7 @@ describe('importContextsFromFile', () => {
         `);
     });
 
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromString(`
       clusters:
@@ -1206,12 +1226,13 @@ describe('importContextsFromFile', () => {
     expect(contexts).toHaveLength(2);
     expect(contexts.find(c => c.name === 'test-context')).toBeDefined();
     expect(contexts.find(c => c.name === 'test-context-1')).toBeDefined();
+    expect(telemetryLoggerMock.logUsage).toHaveBeenCalledWith('importContexts');
   });
 });
 
 describe('findNewContextName', () => {
   test('should generate unique context name', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromOptions({
       clusters: [],
@@ -1229,7 +1250,7 @@ describe('findNewContextName', () => {
   });
 
   test('should increment counter if name already exists', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromOptions({
       clusters: [],
@@ -1246,7 +1267,7 @@ describe('findNewContextName', () => {
   });
 
   test('should handle empty contexts array', () => {
-    const contextsManager = new ContextsManager();
+    const contextsManager = container.get(ContextsManager);
     const kubeConfig = new KubeConfig();
     kubeConfig.loadFromOptions({
       clusters: [],

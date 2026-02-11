@@ -20,11 +20,12 @@ import { ConnectOptions, ContextsApi, ImportContextInfo } from '@kubernetes-cont
 import { inject, injectable } from 'inversify';
 import { Emitter, Event } from '/@/types/emitter';
 import { Cluster, Context, KubeConfig, User } from '@kubernetes/client-node';
-import { kubernetes, window } from '@podman-desktop/api';
+import { kubernetes, TelemetryLogger, window } from '@podman-desktop/api';
 import { writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as jsYaml from 'js-yaml';
 import { DashboardApiManager } from '/@/manager/dashboard-api-manager';
+import { TelemetryLoggerSymbol } from '/@/inject/symbol';
 
 @injectable()
 export class ContextsManager implements ContextsApi {
@@ -35,6 +36,9 @@ export class ContextsManager implements ContextsApi {
 
   @inject(DashboardApiManager)
   protected dashboardApiManager: DashboardApiManager;
+
+  @inject(TelemetryLoggerSymbol)
+  protected telemetryLogger: TelemetryLogger;
 
   constructor() {
     // start with an empty kubeconfig
@@ -62,6 +66,8 @@ export class ContextsManager implements ContextsApi {
         type: 'error',
         highlight: true,
       });
+    } finally {
+      this.telemetryLogger.logUsage('setCurrentContext');
     }
   }
 
@@ -120,6 +126,8 @@ export class ContextsManager implements ContextsApi {
         type: 'error',
         highlight: true,
       });
+    } finally {
+      this.telemetryLogger.logUsage('duplicateContext');
     }
   }
 
@@ -146,6 +154,7 @@ export class ContextsManager implements ContextsApi {
   }
 
   removeContext(kubeconfig: KubeConfig, contextName: string): KubeConfig {
+    this.telemetryLogger.logUsage('deleteContext');
     const previousContexts = kubeconfig.contexts;
     const previousCurrentContextName = kubeconfig.getCurrentContext();
     const newContexts = previousContexts.filter(ctx => ctx.name !== contextName);
@@ -215,6 +224,8 @@ export class ContextsManager implements ContextsApi {
         type: 'error',
         highlight: true,
       });
+    } finally {
+      this.telemetryLogger.logUsage('editContext');
     }
   }
 
@@ -306,6 +317,8 @@ export class ContextsManager implements ContextsApi {
         type: 'error',
         highlight: true,
       });
+    } finally {
+      this.telemetryLogger.logUsage('importContexts');
     }
   }
 
