@@ -21,6 +21,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.2
         version: 9.39.2
+      '@podman-desktop/eslint-plugin':
+        specifier: ^0.2.0
+        version: 0.2.0(eslint@9.39.2(jiti@2.6.1))
       '@tsconfig/strictest':
         specifier: ^2.0.6
         version: 2.0.8
@@ -903,6 +906,12 @@ packages:
 
   '@podman-desktop/api@1.25.1':
     resolution: {integrity: sha512-OTsf2q0g5GavfalYFpOtyn8QVVkLKKJOH1zMabqcIK7yTpu093FRCQY/hBdUYx25UyEXhtX4v7QAP0+lc9B+jw==}
+
+  '@podman-desktop/eslint-plugin@0.2.0':
+    resolution: {integrity: sha512-Svp+48+1ddO4j3w0FMCwiU0ooorGMZHaqgEZkqOCKvdpvoLfJ44yXoSHuJYSnxGQNZsQjxNN7MCbd0hGNSkGPw==}
+    engines: {node: '>=24 <25'}
+    peerDependencies:
+      eslint: '>=9.0.0'
 
   '@podman-desktop/kubernetes-dashboard-extension-api@0.5.0':
     resolution: {integrity: sha512-XlyvBGo2iDGVFEVEzWSmHozoV4yopxRy4aLeGaGX5/V5OvYy8HLduaG/Rhnjb09m/fhdkKKWmCSct5Pi1HkfmQ==}
@@ -4649,6 +4658,10 @@ snapshots:
   '@pkgr/core@0.2.9': {}
 
   '@podman-desktop/api@1.25.1': {}
+
+  '@podman-desktop/eslint-plugin@0.2.0(eslint@9.39.2(jiti@2.6.1))':
+    dependencies:
+      eslint: 9.39.2(jiti@2.6.1)
 
   '@podman-desktop/kubernetes-dashboard-extension-api@0.5.0': {}
 

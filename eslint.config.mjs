@@ -35,6 +35,7 @@ import redundantUndefined from 'eslint-plugin-redundant-undefined';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import vitest from '@vitest/eslint-plugin';
 import betterTailwindcss from 'eslint-plugin-better-tailwindcss';
+import podmanDesktopLinter from '@podman-desktop/eslint-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +70,7 @@ export default [
   sonarjs.configs.recommended,
   ...svelte.configs['flat/recommended'],
   vitest.configs.recommended,
+  podmanDesktopLinter.configs.recommended,
   ...fixupConfigRules(
     compat.extends('plugin:import/recommended', 'plugin:import/typescript', 'plugin:etc/recommended'),
   ),
