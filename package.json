@@ -25,7 +25,7 @@
     "test": "pnpm run test:extension && pnpm run test:webview && pnpm run test:channels",
     "typecheck:rpc": "tsc --noEmit --project packages/rpc",
     "typecheck:channels": "tsc --noEmit --project packages/channels",
-    "typecheck:webview": "tsc --noEmit --project packages/webview",
+    "typecheck:webview": "cd packages/webview && pnpm check",
     "typecheck:extension": "tsc --noEmit --project packages/extension",
     "typecheck": "pnpm run typecheck:rpc && pnpm run typecheck:channels && pnpm run typecheck:webview && pnpm run typecheck:extension"
   },
@@ -62,7 +62,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "^8.56.0",
     "vite": "^7.3.1",
-    "vitest": "^3.1.2"
+    "vitest": "^4"
   },
   "dependencies": {
     "isomorphic-ws": "^5.0.0"
