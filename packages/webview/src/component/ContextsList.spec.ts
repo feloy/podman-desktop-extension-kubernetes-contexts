@@ -31,6 +31,7 @@ import type {
   ContextsPermissionsInfo,
   ResourcesCountInfo,
 } from '@podman-desktop/kubernetes-dashboard-extension-api';
+import * as uiSvelte from '@podman-desktop/ui-svelte';
 
 vi.mock(import('/@/component/ContextCard.svelte'));
 
@@ -51,12 +52,20 @@ beforeEach(() => {
   statesMocks.mock<ContextsHealthsInfo, void>('stateContextsHealthsInfoUI', contextsHealthsMock);
   statesMocks.mock<ContextsPermissionsInfo, void>('stateContextsPermissionsInfoUI', contextsPermissionsMock);
   statesMocks.mock<ResourcesCountInfo, void>('stateResourcesCountInfoUI', resourcesCountMock);
+  vi.spyOn(uiSvelte, 'EmptyScreen');
 });
 
 test('ContextCardLine should not render cards when no available contexts', () => {
+  availableContextsMock.setData({
+    clusters: [],
+    users: [],
+    contexts: [],
+    currentContext: '',
+  });
   render(ContextsList);
   expect(availableContextsMock.subscribe).toHaveBeenCalled();
   expect(ContextCard).not.toHaveBeenCalled();
+  expect(uiSvelte.EmptyScreen).toHaveBeenCalled();
 });
 
 test('ContextCardLine should render cards when available contexts', () => {
@@ -129,6 +138,7 @@ test('ContextCardLine should render cards when available contexts', () => {
     icon: kubernetesIconBase64,
     onEdit: expect.any(Function),
   });
+  expect(uiSvelte.EmptyScreen).not.toHaveBeenCalled();
 });
 
 test('ContextCard is called with the correct health', async () => {
