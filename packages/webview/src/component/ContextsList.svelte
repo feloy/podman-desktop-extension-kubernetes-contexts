@@ -60,9 +60,9 @@ function openImportModal(): void {
     {/snippet}
     {#snippet content()}
       <div class="mx-5 w-full">
-        {#if (availableContexts?.data?.contexts?.length ?? 0) === 0}
+        {#if availableContexts?.data && (availableContexts?.data?.contexts?.length ?? 0) === 0}
           <EmptyScreen
-            aria-label="No Resource Panel"
+            aria-label="No Kubernetes contexts"
             icon={KubeIcon}
             title="No Kubernetes contexts found"
             message="Check that Kubernetes context is created and selected. You can create local Kubernetes cluster from Podman Desktop.">

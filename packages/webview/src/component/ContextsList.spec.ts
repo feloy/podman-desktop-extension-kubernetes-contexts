@@ -56,6 +56,12 @@ beforeEach(() => {
 });
 
 test('ContextCardLine should not render cards when no available contexts', () => {
+  availableContextsMock.setData({
+    clusters: [],
+    users: [],
+    contexts: [],
+    currentContext: '',
+  });
   render(ContextsList);
   expect(availableContextsMock.subscribe).toHaveBeenCalled();
   expect(ContextCard).not.toHaveBeenCalled();
