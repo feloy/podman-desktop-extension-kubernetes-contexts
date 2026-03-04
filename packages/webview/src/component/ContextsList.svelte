@@ -9,7 +9,7 @@ import EditModal from '/@/component/EditModal.svelte';
 import type { Unsubscriber } from 'svelte/store';
 import ImportModal from '/@/component/ImportModal.svelte';
 import { faFileImport } from '@fortawesome/free-solid-svg-icons';
-import KubeIcon from '/@/component/icons/KubeIcon.svelte';
+import ContextsIcon from '/@/component/icons/ContextsIcon.svelte';
 
 const DISPLAYED_RESOURCES = ['deployments', 'pods'];
 const states = getContext<States>(States);
@@ -63,7 +63,7 @@ function openImportModal(): void {
         {#if availableContexts?.data && (availableContexts?.data?.contexts?.length ?? 0) === 0}
           <EmptyScreen
             aria-label="No Kubernetes contexts"
-            icon={KubeIcon}
+            icon={ContextsIcon}
             title="No Kubernetes contexts found"
             message="Check that Kubernetes context is created and selected. You can create local Kubernetes cluster from Podman Desktop.">
           </EmptyScreen>
