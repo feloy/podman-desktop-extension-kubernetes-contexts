@@ -60,39 +60,41 @@ function openImportModal(): void {
     {/snippet}
     {#snippet content()}
       <div class="mx-5 w-full">
-        {#if availableContexts?.data && (availableContexts?.data?.contexts?.length ?? 0) === 0}
-          <EmptyScreen
-            aria-label="No Kubernetes contexts"
-            icon={ContextsIcon}
-            title="No Kubernetes contexts found"
-            message="Check that Kubernetes context is created and selected. You can create local Kubernetes cluster from Podman Desktop.">
-          </EmptyScreen>
-        {/if}
-        {#if availableContexts.data}
-          <div class="h-full" role="table" aria-label="Contexts">
-            {#each availableContexts.data.contexts as context, index (index)}
-              {@const cluster = availableContexts.data.clusters.find(cluster => cluster.name === context.cluster)}
-              {@const user = availableContexts.data.users.find(user => user.name === context.user)}
-              {#if cluster && user}
-                <ContextCard
-                  health={contextsHealths.data?.healths.find(health => health.contextName === context.name)}
-                  resourcesCount={resourcesCount.data?.counts.filter(
-                    count => count.contextName === context.name && DISPLAYED_RESOURCES.includes(count.resourceName),
-                  )}
-                  contextsPermissions={contextsPermissions.data?.permissions.filter(
-                    permission =>
-                      permission.contextName === context.name && DISPLAYED_RESOURCES.includes(permission.resourceName),
-                  )}
-                  cluster={cluster}
-                  user={user}
-                  name={context.name}
-                  namespace={context.namespace}
-                  currentContext={context.name === availableContexts.data.currentContext}
-                  icon={kubernetesIconBase64}
-                  onEdit={onEdit.bind(undefined, context)} />
-              {/if}
-            {/each}
-          </div>
+        {#if availableContexts?.data}
+          {#if (availableContexts?.data?.contexts?.length ?? 0) === 0}
+            <EmptyScreen
+              aria-label="No Kubernetes contexts"
+              icon={ContextsIcon}
+              title="No Kubernetes contexts found"
+              message="Check that Kubernetes context is created and selected. You can create local Kubernetes cluster from Podman Desktop.">
+            </EmptyScreen>
+          {:else}
+            <div class="h-full" role="table" aria-label="Contexts">
+              {#each availableContexts.data.contexts as context, index (index)}
+                {@const cluster = availableContexts.data.clusters.find(cluster => cluster.name === context.cluster)}
+                {@const user = availableContexts.data.users.find(user => user.name === context.user)}
+                {#if cluster && user}
+                  <ContextCard
+                    health={contextsHealths.data?.healths.find(health => health.contextName === context.name)}
+                    resourcesCount={resourcesCount.data?.counts.filter(
+                      count => count.contextName === context.name && DISPLAYED_RESOURCES.includes(count.resourceName),
+                    )}
+                    contextsPermissions={contextsPermissions.data?.permissions.filter(
+                      permission =>
+                        permission.contextName === context.name &&
+                        DISPLAYED_RESOURCES.includes(permission.resourceName),
+                    )}
+                    cluster={cluster}
+                    user={user}
+                    name={context.name}
+                    namespace={context.namespace}
+                    currentContext={context.name === availableContexts.data.currentContext}
+                    icon={kubernetesIconBase64}
+                    onEdit={onEdit.bind(undefined, context)} />
+                {/if}
+              {/each}
+            </div>
+          {/if}
           {#if contextToEdit}
             <EditModal
               contexts={availableContexts.data.contexts}
