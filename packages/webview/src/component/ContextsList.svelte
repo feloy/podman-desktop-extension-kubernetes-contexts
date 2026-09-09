@@ -53,13 +53,13 @@ function openImportModal(): void {
 }
 </script>
 
-<main class="overflow-hidden bg-(--pd-content-bg) text-base h-screen w-screen">
+<main class="overflow-hidden bg-(--pd-content-bg) text-base h-screen w-full">
   <NavPage searchEnabled={false} title="Kubernetes Contexts">
     {#snippet additionalActions()}
       <Button type="primary" icon={faFileImport} onclick={openImportModal}>Import</Button>
     {/snippet}
     {#snippet content()}
-      <div class="mx-5 w-full">
+      <div class="mx-5">
         {#if availableContexts?.data}
           {#if (availableContexts?.data?.contexts?.length ?? 0) === 0}
             <EmptyScreen
