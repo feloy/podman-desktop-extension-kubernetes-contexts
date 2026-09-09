@@ -70,7 +70,7 @@ const {
             contextsPermissions={contextsPermissions} />
         </div>
       </div>
-      <div class="grow text-sm">
+      <div class="grow min-w-0 text-sm">
         <ContextCardLine title="CLUSTER" value={cluster.name} label="Context Cluster" />
         {#if cluster.server !== undefined}
           <ContextCardLine title="SERVER" value={cluster.server} label="Context Server" />
