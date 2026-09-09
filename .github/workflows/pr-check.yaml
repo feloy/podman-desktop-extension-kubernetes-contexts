@@ -79,7 +79,7 @@ jobs:
         timeout-minutes: 40
 
   build-oci:
-    name: build oci image
+    name: Build extension OCI image
     runs-on: ubuntu-24.04
     steps:
       - name: Build OCI
