@@ -7,17 +7,6 @@ const reporter: ReporterDescription[] = [
   ['html', { open: 'never', outputFolder: './output/html-results' }],
 ];
 
-if (process.env.VIDEO_SUBTITLES === 'true') {
-  reporter.push([
-    './src/video-captions/reporter.ts',
-    {
-      outputFile: './recordings/kubernetes-contexts-e2e.ass',
-      chapterFile: './recordings/kubernetes-contexts-e2e.ffmetadata',
-      testTitleDurationMs: 3_000,
-    },
-  ]);
-}
-
 export default defineConfig({
   testDir: './src',
   timeout: 90_000,
