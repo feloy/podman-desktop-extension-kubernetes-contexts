@@ -6,14 +6,13 @@ import { KubeConfig } from '@kubernetes/client-node';
 import type { Locator, Page } from '@playwright/test';
 import type { NavigationBar, Runner } from '@podman-desktop/tests-playwright';
 import {
+  expect,
   PreferencesPage,
   RunnerOptions,
   StatusBar,
   test,
   withMockedOpenFileDialog,
 } from '@podman-desktop/tests-playwright';
-
-import { configureVideoCaptions, expect, frameForCaption, recordedStep } from './video-captions/runtime';
 
 const DASHBOARD_ID = 'podman-desktop.kubernetes-dashboard';
 const CONTEXTS_ID = 'podman-desktop.kubernetes-contexts';
@@ -117,10 +116,6 @@ test.use({
 test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started', { tag: '@integration' }, () => {
   let webview: Page;
 
-  test.beforeEach(({ page }, testInfo) => {
-    configureVideoCaptions(page, testInfo);
-  });
-
   test.beforeAll(async ({ runner, welcomePage }) => {
     test.setTimeout(120_000);
     prepareFixtures();
@@ -135,7 +130,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
 
   test('install both extensions and stop Dashboard before Contexts starts', async ({ navigationBar }) => {
     test.setTimeout(180_000);
-    await recordedStep('Dashboard is disabled while Kubernetes Contexts stays active', async () => {
+    await test.step('Dashboard is disabled while Kubernetes Contexts stays active', async () => {
       const extensions = await navigationBar.openExtensions();
       await expect(extensions.header).toBeVisible();
 
@@ -163,7 +158,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
         await contexts.disableExtension();
         await contexts.enableExtension();
       }
-      await frameForCaption(dashboard.status);
       await expect(dashboard.status, 'Dashboard is disabled while Kubernetes Contexts stays active').toHaveText(
         'DISABLED',
       );
@@ -171,7 +165,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
   });
 
   test('load isolated kubeconfig and show contexts without Dashboard data', async ({ runner, page, navigationBar }) => {
-    await recordedStep('Contexts are available without Dashboard health or resource data', async () => {
+    await test.step('Contexts are available without Dashboard health or resource data', async () => {
       const settings = await navigationBar.openSettings();
       await settings.expandPreferencesTab();
       const preferences = await settings.openTabPage(PreferencesPage);
@@ -185,7 +179,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       await expect(primary.getByRole('button', { name: `Connect to context ${PRIMARY_CONTEXT}` })).toBeVisible();
       await expect(webview.getByRole('row', { name: SECONDARY_CONTEXT, exact: true })).toBeVisible();
       await expect(webview.getByRole('row', { name: RESTRICTED_CONTEXT, exact: true })).toBeVisible();
-      await frameForCaption(primary);
       await expect(
         primary.getByLabel('Context Unknown'),
         'Contexts are available without Dashboard health or resource data',
@@ -199,7 +192,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
     const copy = webview.getByRole('row', { name: `${PRIMARY_CONTEXT}-1`, exact: true });
     const edited = webview.getByRole('row', { name: 'e2e-edited', exact: true });
 
-    await recordedStep('The primary context is restored after switching contexts', async () => {
+    await test.step('The primary context is restored after switching contexts', async () => {
       const secondary = webview.getByRole('row', { name: SECONDARY_CONTEXT, exact: true });
       await secondary.getByRole('button', { name: 'Set as Current Context' }).click();
       await expect(secondary.getByLabel('Current Context')).toBeVisible();
@@ -207,24 +200,22 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
 
       await primary.getByRole('button', { name: 'Set as Current Context' }).click();
       await expect.poll(() => loadConfig(profileKubeconfig).getCurrentContext()).toBe(PRIMARY_CONTEXT);
-      await frameForCaption(primary);
       await expect(
         primary.getByLabel('Current Context'),
         'The primary context is restored after switching contexts',
       ).toBeVisible();
     });
 
-    await recordedStep('The duplicated context appears in the list', async () => {
+    await test.step('The duplicated context appears in the list', async () => {
       await primary.getByRole('button', { name: 'Duplicate Context' }).click();
       await expect(copy).toBeVisible();
       await expect
         .poll(() => loadConfig(profileKubeconfig).contexts.some(context => context.name === `${PRIMARY_CONTEXT}-1`))
         .toBe(true);
-      await frameForCaption(copy);
       await expect(copy, 'The duplicated context appears in the list').toBeVisible();
     });
 
-    await recordedStep('The edited context has its new name and namespace', async () => {
+    await test.step('The edited context has its new name and namespace', async () => {
       await copy.getByRole('button', { name: 'Edit Context' }).click();
       const edit = webview.getByRole('dialog', { name: 'Edit Context' });
       await edit.getByRole('textbox', { name: 'contextName', exact: true }).fill('e2e-edited');
@@ -234,11 +225,10 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       await expect
         .poll(() => loadConfig(profileKubeconfig).contexts.find(context => context.name === 'e2e-edited')?.namespace)
         .toBe('e2e-namespace');
-      await frameForCaption(edited);
       await expect(edited, 'The edited context has its new name and namespace').toContainText('e2e-namespace');
     });
 
-    await recordedStep('The deleted context disappears from the list', async () => {
+    await test.step('The deleted context disappears from the list', async () => {
       await edited.getByRole('button', { name: 'Delete Context' }).click();
       const confirmation = page.getByRole('dialog');
       await expect(confirmation).toContainText('e2e-edited');
@@ -247,7 +237,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       await expect
         .poll(() => loadConfig(profileKubeconfig).contexts.some(context => context.name === 'e2e-edited'))
         .toBe(false);
-      await frameForCaption(webview.getByRole('row', { name: RESTRICTED_CONTEXT, exact: true }));
       await expect(edited, 'The deleted context disappears from the list').not.toBeVisible();
     });
   });
@@ -267,7 +256,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       return dialog;
     }
 
-    await recordedStep('A conflicting context is kept under a new name', async () => {
+    await test.step('A conflicting context is kept under a new name', async () => {
       const firstImport = await openImport();
       await expect(firstImport.getByRole('row', { name: SECONDARY_CONTEXT }).getByText('Keep both')).toBeVisible();
       await firstImport.getByRole('button', { name: 'Import contexts' }).click();
@@ -276,14 +265,13 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       await expect
         .poll(() => loadConfig(profileKubeconfig).contexts.some(context => context.name === `${SECONDARY_CONTEXT}-1`))
         .toBe(true);
-      await frameForCaption(webview.getByRole('row', { name: `${SECONDARY_CONTEXT}-1`, exact: true }));
       await expect(
         webview.getByRole('row', { name: `${SECONDARY_CONTEXT}-1`, exact: true }),
         'A conflicting context is kept under a new name',
       ).toBeVisible();
     });
 
-    await recordedStep('A conflicting context replaces the existing one', async () => {
+    await test.step('A conflicting context replaces the existing one', async () => {
       const secondImport = await openImport();
       await secondImport.getByRole('row', { name: IMPORTED_CONTEXT }).getByRole('checkbox').uncheck();
       await secondImport
@@ -296,7 +284,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
           () => loadConfig(profileKubeconfig).contexts.find(context => context.name === SECONDARY_CONTEXT)?.namespace,
         )
         .toBe('imported-namespace');
-      await frameForCaption(webview.getByRole('row', { name: SECONDARY_CONTEXT, exact: true }));
       await expect(
         webview.getByRole('row', { name: SECONDARY_CONTEXT, exact: true }),
         'A conflicting context replaces the existing one',
@@ -306,7 +293,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
 
   test('start Dashboard and display context health and resource counts', async ({ runner, page, navigationBar }) => {
     test.setTimeout(120_000);
-    await recordedStep('Dashboard adds context health and Kubernetes resource counts', async () => {
+    await test.step('Dashboard adds context health and Kubernetes resource counts', async () => {
       const extensions = await navigationBar.openExtensions();
       const dashboard = await extensions.getInstalledExtension('Kubernetes Dashboard', DASHBOARD_ID);
       await expect(dashboard.status).toHaveText('DISABLED');
@@ -317,7 +304,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       const primary = webview.getByRole('row', { name: PRIMARY_CONTEXT, exact: true });
       await expect(primary.getByLabel('Context Reachable')).toHaveText('REACHABLE', { timeout: 60_000 });
       await expect(primary.getByLabel('Context Pods Count')).toHaveText('1', { timeout: 60_000 });
-      await frameForCaption(primary);
       await expect(
         primary.getByLabel('Context Deployments Count'),
         'Dashboard adds context health and Kubernetes resource counts',
@@ -327,7 +313,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
 
   test('show Dashboard permissions for a restricted context', async () => {
     test.setTimeout(120_000);
-    await recordedStep('Dashboard shows restricted permissions for the user1 context', async () => {
+    await test.step('Dashboard shows restricted permissions for the user1 context', async () => {
       const restricted = webview.getByRole('row', { name: RESTRICTED_CONTEXT, exact: true });
       const connect = restricted.getByRole('button', { name: `Connect to context ${RESTRICTED_CONTEXT}` });
       const reachable = restricted.getByLabel('Context Reachable');
@@ -335,7 +321,6 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       if (await connect.isVisible()) await connect.click();
       await expect(reachable).toHaveText('REACHABLE', { timeout: 60_000 });
       await expect(restricted.getByLabel('Context Pods Count')).toHaveText('1', { timeout: 60_000 });
-      await frameForCaption(restricted);
       await expect(
         restricted.getByLabel('Context Deployments Count'),
         'Dashboard shows restricted permissions for the user1 context',
