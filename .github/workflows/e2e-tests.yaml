@@ -70,10 +70,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Revert unprivileged user namespace restrictions in Ubuntu 24.04
-        if: runner.os == 'Linux'
-        run: |
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Setup testenv using external action
+        uses: podman-desktop/e2e/.github/actions/pde2e-testenv-prepare@f1743540b2fa62caa0185dd2dd6306bbe0fed299
 
       - name: Install Podman Desktop
         uses: podman-desktop/gh-extensions-actions/.github/actions/podman-desktop-install@dde0e72aec31e5df8918d82db9ca8d298a37d305 # v0.7.0
