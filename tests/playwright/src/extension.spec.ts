@@ -141,7 +141,11 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
         await extensions.installExtensionFromOCIImage(dashboardImage);
       }
       const dashboard = await extensions.getInstalledExtension('Kubernetes Dashboard', DASHBOARD_ID);
-      await expect(dashboard.status).toHaveText('ACTIVE');
+
+      // Newer Podman Desktop builds use a status role and "Installed" instead of the legacy "ACTIVE" label.
+      const status = dashboard.card.getByRole('status', { name: 'Extension status', exact: true }).or(dashboard.status);
+      await expect(status).toHaveText(/^\s*(ACTIVE|Installed)\s*$/);
+
       await dashboard.disableExtension();
       await expect(dashboard.status).toHaveText('DISABLED');
 
