@@ -142,12 +142,10 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
       }
       const dashboard = await extensions.getInstalledExtension('Kubernetes Dashboard', DASHBOARD_ID);
 
-      // Newer Podman Desktop builds use a status role and "Installed" instead of the legacy "ACTIVE" label.
-      const status = dashboard.card.getByRole('status', { name: 'Extension status', exact: true }).or(dashboard.status);
-      await expect(status).toHaveText(/^\s*(ACTIVE|Installed)\s*$/);
+      await expect(dashboard.status).toHaveText('Installed');
 
       await dashboard.disableExtension();
-      await expect(dashboard.status).toHaveText('DISABLED');
+      await expect(dashboard.status).toHaveText('Disabled');
 
       if (!PREINSTALLED) {
         const contextsImage = process.env.EXTENSION_OCI_IMAGE;
@@ -155,7 +153,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
         await extensions.installExtensionFromOCIImage(contextsImage);
       }
       const contexts = await extensions.getInstalledExtension('Kubernetes Contexts', CONTEXTS_ID);
-      await expect(contexts.status).toHaveText('ACTIVE');
+      await expect(contexts.status).toHaveText('Installed');
       if (PREINSTALLED) {
         // Both plugins may activate during startup. Restart Contexts with Dashboard disabled
         // so no cached Dashboard health or resource events survive the standalone phase.
@@ -163,7 +161,7 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
         await contexts.enableExtension();
       }
       await expect(dashboard.status, 'Dashboard is disabled while Kubernetes Contexts stays active').toHaveText(
-        'DISABLED',
+        'Disabled',
       );
     });
   });
@@ -300,9 +298,9 @@ test.describe.serial('Kubernetes Contexts with Dashboard stopped, then started',
     await test.step('Dashboard adds context health and Kubernetes resource counts', async () => {
       const extensions = await navigationBar.openExtensions();
       const dashboard = await extensions.getInstalledExtension('Kubernetes Dashboard', DASHBOARD_ID);
-      await expect(dashboard.status).toHaveText('DISABLED');
+      await expect(dashboard.status).toHaveText('Disabled');
       await dashboard.enableExtension();
-      await expect(dashboard.status).toHaveText('ACTIVE');
+      await expect(dashboard.status).toHaveText('Installed');
 
       webview = await contextsWebview(runner, page, navigationBar);
       const primary = webview.getByRole('row', { name: PRIMARY_CONTEXT, exact: true });
